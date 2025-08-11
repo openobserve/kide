@@ -4,8 +4,18 @@ on:
   pull_request:
     branches: [ main ]
     types: [ opened, synchronize, reopened ]
+    paths-ignore:
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.md'
+      - '**/*.txt'
   push:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.md'
+      - '**/*.txt'
 
 env:
   CARGO_TERM_COLOR: always
