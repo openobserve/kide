@@ -9,6 +9,7 @@ on:
       - '**/*.yml'
       - '**/*.md'
       - '**/*.txt'
+      - '**/*.json'
   push:
     branches: [ main ]
     paths-ignore:
@@ -16,6 +17,7 @@ on:
       - '**/*.yml'
       - '**/*.md'
       - '**/*.txt'
+      - '**/*.json'
 
 env:
   CARGO_TERM_COLOR: always
