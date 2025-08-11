@@ -68,7 +68,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         # Build only the binary without bundling for Linux
-        npm run tauri build -- --target ${{ matrix.target }} --bundles none
+        npm run tauri build -- --target ${{ matrix.target }}
         
     - name: Build Tauri app (macOS with target)
       if: startsWith(matrix.os, 'macos')

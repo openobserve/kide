@@ -13,7 +13,7 @@ npm run build
 
 # Build the Tauri app without bundling
 echo "🦀 Building Rust binary..."
-npm run tauri build -- --bundles none
+npm run tauri build
 
 # Detect the target architecture
 if [[ $(uname -m) == "x86_64" ]]; then
