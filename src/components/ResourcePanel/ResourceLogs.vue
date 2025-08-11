@@ -3,7 +3,8 @@
     <div class="flex-none px-6 py-2 border-b border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <select v-model="selectedContainer" class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <div class="relative">
+            <select v-model="selectedContainer" class="flat-select text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 pr-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700">
             <!-- Init Containers -->
             <optgroup v-if="initContainers?.length" label="Init Containers">
               <option v-for="container in initContainers" :key="`init-${container.name}`" :value="`init-${container.name}`">
@@ -16,7 +17,14 @@
                 {{ container.name }}
               </option>
             </optgroup>
-          </select>
+            </select>
+            <!-- Custom dropdown arrow -->
+            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </div>
           <button @click="$emit('refresh-logs')" 
                   class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
             Refresh
@@ -274,3 +282,17 @@ watch(() => props.logLines, () => {
   updateSearchMatches()
 }, { immediate: true })
 </script>
+
+<style scoped>
+.flat-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+  box-shadow: none;
+}
+
+.flat-select::-ms-expand {
+  display: none;
+}
+</style>

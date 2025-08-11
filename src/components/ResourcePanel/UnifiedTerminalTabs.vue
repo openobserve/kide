@@ -76,40 +76,39 @@
               <!-- Tab label with container dropdown for shell tabs -->
               <div v-if="tab.type === 'shell'" class="flex items-center space-x-1 min-w-0">
                 <span class="truncate">{{ tab.podName }}</span>
-                <div class="relative">
+                <div class="relative" style="z-index: 9999;">
                   <button
-                    @click.stop="toggleContainerDropdown(tab.id)"
-                    class="flex items-center px-1 py-0.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    @click.stop="toggleContainerDropdown(tab.id, $event)"
+                    class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     :class="{ 'bg-gray-200 dark:bg-gray-600': openDropdown === tab.id }"
+                    :title="`Current container: ${tab.containerName}`"
                   >
-                    <span class="max-w-16 truncate">{{ tab.containerName }}</span>
-                    <svg class="w-3 h-3 ml-1 transition-transform" :class="{ 'rotate-180': openDropdown === tab.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-180': openDropdown === tab.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                   </button>
                   
                   <!-- Container dropdown -->
-                  <div v-if="openDropdown === tab.id" class="absolute top-full left-0 mt-1 min-w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50">
-                    <div class="py-1">
-                      <button
+                  <div v-if="openDropdown === tab.id" style="position: fixed; z-index: 999999; background: white; border: 2px solid #374151; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); min-width: 160px; max-height: 200px; overflow-y: auto;" :style="{ top: dropdownPosition.top, left: dropdownPosition.left }">
+                    <div style="padding: 4px 0;">
+                      <div
                         v-for="container in tab.containers"
                         :key="container.name"
                         @click.stop="selectContainer(tab.id, container.name)"
-                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        :class="{
-                          'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300': container.name === tab.containerName,
-                          'text-gray-700 dark:text-gray-300': container.name !== tab.containerName
+                        style="padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.15s;"
+                        :style="{
+                          backgroundColor: container.name === tab.containerName ? '#dbeafe' : 'transparent',
+                          color: container.name === tab.containerName ? '#1d4ed8' : '#374151',
+                          fontWeight: container.name === tab.containerName ? 'bold' : 'normal'
                         }"
+                        @mouseover="$event.target.style.backgroundColor = container.name === tab.containerName ? '#bfdbfe' : '#f3f4f6'"
+                        @mouseleave="$event.target.style.backgroundColor = container.name === tab.containerName ? '#dbeafe' : 'transparent'"
                       >
-                        <div class="flex items-center justify-between">
-                          <span class="truncate">{{ container.name }}</span>
-                          <span v-if="container.name === tab.containerName" class="ml-2 text-blue-600 dark:text-blue-400">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                          </span>
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                          <span>{{ container.name }}</span>
+                          <span v-if="container.name === tab.containerName" style="color: #1d4ed8;">✓</span>
                         </div>
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -429,8 +428,22 @@ function updateTabContainer(tabId: string, containerName: string): void {
 }
 
 // Container dropdown functions
-function toggleContainerDropdown(tabId: string): void {
-  openDropdown.value = openDropdown.value === tabId ? null : tabId
+const dropdownPosition = ref<{ top: string, left: string }>({ top: '100px', left: '100px' })
+
+function toggleContainerDropdown(tabId: string, event?: MouseEvent): void {
+  if (openDropdown.value === tabId) {
+    openDropdown.value = null
+  } else {
+    // Calculate position based on button click
+    if (event) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      dropdownPosition.value = {
+        top: `${rect.top - 10}px`, // Position above the button
+        left: `${rect.left}px`
+      }
+    }
+    openDropdown.value = tabId
+  }
 }
 
 function selectContainer(tabId: string, containerName: string): void {
@@ -456,6 +469,7 @@ function handleClickOutside(event: MouseEvent): void {
     openDropdown.value = null
   }
 }
+
 
 function updateTabLogState(tabId: string, logState: { isLiveLogging: boolean, logLines?: string[] }): void {
   const tab = terminalTabs.value.find(t => t.id === tabId && t.type === 'logs')
