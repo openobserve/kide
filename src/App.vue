@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
+  <div class="h-screen bg-gray-900 flex flex-col overflow-hidden">
     <!-- Cluster Tabs at the top -->
     <div class="flex-none">
       <ClusterHotbar 
@@ -57,14 +57,9 @@ import ClusterHotbar from './components/ClusterHotbar.vue'
 import ResourceNavigation from './components/ResourceNavigation.vue'
 import MainContent from './components/MainContent.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
-import { useTheme } from './composables/useTheme'
 import { useClusterStore } from './stores/cluster'
 import { useResourceStore } from './stores/resources'
 import type { WatchEvent } from '@/types'
-
-// Initialize theme
-const { initTheme } = useTheme()
-initTheme()
 
 // Use Pinia stores
 const clusterStore = useClusterStore()
