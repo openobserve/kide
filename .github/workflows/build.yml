@@ -17,9 +17,8 @@ jobs:
           - os: ubuntu-latest
             artifact: kide-linux-x64
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            artifact: kide-linux-arm64
-            target: aarch64-unknown-linux-gnu
+          # ARM64 Linux temporarily disabled due to cross-compilation complexity
+          # TODO: Re-enable when GitHub Actions supports native ARM64 runners
           # macOS builds
           - os: macos-latest
             artifact: kide-macos-arm64
@@ -58,21 +57,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-    - name: Install dependencies (Ubuntu ARM64)
-      if: matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
-        # Install ARM64 cross-compilation libraries
-        sudo dpkg --add-architecture arm64
-        sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev:arm64 libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64
-        # Set environment variables for cross compilation
-        echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH_aarch64-unknown-linux-gnu=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-        echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
 
     - name: Install Node.js dependencies
       run: npm ci
@@ -130,13 +114,6 @@ jobs:
           mkdir -p release-files
           find kide-linux-x64 -name "*.AppImage" -exec cp {} release-files/kide-linux-x64.AppImage \;
           find kide-linux-x64 -name "*.deb" -exec cp {} release-files/kide-linux-x64.deb \;
-        fi
-        
-        # Linux ARM64 files
-        if [ -d "kide-linux-arm64" ]; then
-          mkdir -p release-files
-          find kide-linux-arm64 -name "*.AppImage" -exec cp {} release-files/kide-linux-arm64.AppImage \;
-          find kide-linux-arm64 -name "*.deb" -exec cp {} release-files/kide-linux-arm64.deb \;
         fi
         
         # macOS ARM64 files  
