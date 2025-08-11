@@ -9,6 +9,21 @@ Object.defineProperty(window, 'reportError', {
   writable: true
 })
 
+// Mock matchMedia for XTerm compatibility
+Object.defineProperty(window, 'matchMedia', {
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+  writable: true,
+})
+
 Object.defineProperty(window, 'reportApiError', {
   value: vi.fn(),
   writable: true
@@ -90,7 +105,45 @@ vi.mock('*.svg', () => 'svg-mock')
 vi.mock('*.png', () => 'png-mock')
 vi.mock('*.jpg', () => 'jpg-mock')
 
-// Mock Monaco Editor
+// Mock Monaco Editor and our custom setup
+vi.mock('@/utils/monaco-setup', async () => {
+  const monaco = {
+    editor: {
+      create: vi.fn(() => ({
+        dispose: vi.fn(),
+        setValue: vi.fn(),
+        getValue: vi.fn(() => ''),
+        onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
+        layout: vi.fn(),
+        focus: vi.fn(),
+        getModel: vi.fn(() => ({
+          pushEditOperations: vi.fn(),
+          setValue: vi.fn(),
+          getValue: vi.fn(() => ''),
+        })),
+      })),
+      setTheme: vi.fn(),
+      defineTheme: vi.fn(),
+      getModels: vi.fn(() => []),
+      createModel: vi.fn(() => ({
+        dispose: vi.fn(),
+        setValue: vi.fn(),
+        getValue: vi.fn(() => ''),
+      })),
+    },
+    languages: {
+      yaml: {},
+      json: {},
+      register: vi.fn(),
+      setLanguageConfiguration: vi.fn(),
+      setMonarchTokensProvider: vi.fn(),
+    },
+    Range: vi.fn(),
+    Selection: vi.fn(),
+  }
+  return { monaco, default: monaco }
+})
+
 vi.mock('monaco-editor', () => ({
   editor: {
     create: vi.fn(() => ({

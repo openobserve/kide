@@ -182,7 +182,7 @@ describe('ResourcePanel E2E', () => {
     })
 
     // Try clicking the overlay background to close (as per the template)
-    const overlay = wrapper.find('.fixed.inset-0.bg-black.bg-opacity-50')
+    const overlay = wrapper.find('.fixed.inset-0.bg-black\\/50')
     expect(overlay.exists()).toBe(true)
     
     await overlay.trigger('click')

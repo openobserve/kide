@@ -58,8 +58,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-// Import Monaco editor with YAML and JSON language support
-import * as monaco from 'monaco-editor'
+// Import Monaco editor with only YAML and JSON language support
+import { monaco } from '@/utils/monaco-setup'
 import * as yaml from 'js-yaml'
 import { invoke } from '@tauri-apps/api/core'
 import { useTimeouts } from '@/composables/useTimeouts'
@@ -100,20 +100,7 @@ onMounted(async () => {
   
   if (!editorContainer.value) return
 
-  // Configure Monaco Editor worker environment
-  if (typeof window !== 'undefined') {
-    (window as any).MonacoEnvironment = {
-      getWorkerUrl: () => {
-        // In test environment, return a mock worker URL
-        if (import.meta.env?.MODE === 'test') {
-          return 'data:text/javascript;base64,Ly8gTW9jayB3b3JrZXI='
-        }
-        // For production, dynamically construct worker URL
-        const workerPath = 'monaco-editor/esm/vs/editor/editor.worker.js'
-        return new URL(workerPath, import.meta.url).href
-      }
-    }
-  }
+  // Monaco worker environment is configured in monaco-setup.ts
 
   // Create editor (YAML language already registered via contribution)
   editor = monaco.editor.create(editorContainer.value, {

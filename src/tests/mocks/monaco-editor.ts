@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-// Monaco Editor mock for testing (YAML + JSON version)
+// Monaco Editor mock for testing (YAML + JSON only version)
 export const editor = {
   create: vi.fn(() => ({
     dispose: vi.fn(),

@@ -15,18 +15,12 @@ jobs:
         include:
           # Linux builds
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
             artifact: kide-linux-x64
-          # macOS builds
+          # macOS builds  
           - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact: kide-macos-x64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: kide-macos-arm64
+            artifact: kide-macos-universal
           # Windows builds
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
             artifact: kide-windows-x64
 
     runs-on: ${{ matrix.os }}
@@ -37,8 +31,6 @@ jobs:
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ matrix.target }}
 
     - name: Install Node.js
       uses: actions/setup-node@v4
@@ -59,7 +51,7 @@ jobs:
       run: npm run build
 
     - name: Build Tauri app
-      run: npm run tauri build -- --target ${{ matrix.target }}
+      run: npm run tauri build
 
     - name: Upload binaries (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -104,8 +96,7 @@ jobs:
         generate_release_notes: true
         files: |
           kide-linux-x64/*
-          kide-macos-x64/*
-          kide-macos-arm64/*
+          kide-macos-universal/*
           kide-windows-x64/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -23,9 +23,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      'monaco-editor',
-      'monaco-editor/esm/vs/basic-languages/yaml/yaml',
-      'monaco-editor/esm/vs/language/json/jsonMode'
+      'monaco-editor/esm/vs/editor/editor.api'
     ]
   },
   build: {
@@ -33,7 +31,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           monaco: [
-            'monaco-editor'
+            'monaco-editor/esm/vs/editor/editor.api'
           ]
         }
       }
