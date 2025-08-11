@@ -1,1 +1,1 @@
-{"main-capability":{"identifier":"main-capability","description":"Capability for the main window","local":true,"windows":["main"],"permissions":["core:default","core:event:allow-listen","core:event:allow-emit"]}}
+{"main-capability":{"identifier":"main-capability","description":"Capability for the main window","local":true,"windows":["main"],"permissions":["core:default","core:event:allow-listen","core:event:allow-emit","shell:allow-execute","shell:allow-open"]}}
