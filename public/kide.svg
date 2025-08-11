@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="roundedSquare">
+      <rect width="1024" height="1024" rx="180" ry="180"/>
+    </clipPath>
+    <style>
+      .ring-red { fill: #FF6B6B; }
+      .ring-purple { fill: #8B5FBF; }
+      .ring-blue { fill: #4ECDC4; }
+      .ring-green { fill: #45B7D1; }
+      .center { fill: #FFFFFF; }
+      .waveform { fill: #000000; }
+    </style>
+  </defs>
+  
+  <g clip-path="url(#roundedSquare)">
+    <!-- White background -->
+    <rect width="1024" height="1024" fill="white"/>
+    
+    <!-- Outer ring segments -->
+    <g transform="translate(512,512)">
+      <!-- Red segment (top-left) -->
+      <path class="ring-red" d="M -300 -50 A 300 300 0 0 1 -50 -300 L -25 -150 A 150 150 0 0 0 -150 -25 Z"/>
+      
+      <!-- Purple segment (top-right) -->
+      <path class="ring-purple" d="M -50 -300 A 300 300 0 0 1 300 -50 L 150 -25 A 150 150 0 0 0 -25 -150 Z"/>
+      
+      <!-- Blue segment (bottom-right) -->
+      <path class="ring-blue" d="M 300 -50 A 300 300 0 0 1 50 300 L 25 150 A 150 150 0 0 0 150 25 Z"/>
+      
+      <!-- Green segment (bottom-left) -->
+      <path class="ring-green" d="M 50 300 A 300 300 0 0 1 -300 50 L -150 25 A 150 150 0 0 0 25 150 Z"/>
+      
+      <!-- White center circle -->
+      <circle class="center" cx="0" cy="0" r="150"/>
+      
+      <!-- Waveform symbol -->
+      <g class="waveform">
+        <!-- Horizontal lines -->
+        <rect x="-80" y="-10" width="50" height="20" rx="10"/>
+        <rect x="30" y="-10" width="50" height="20" rx="10"/>
+        
+        <!-- Waveform peaks -->
+        <polygon points="-30,-60 -10,-60 10,60 30,60 50,-20 70,-20 70,20 50,20 30,-40 10,-40 -10,40 -30,40 -50,0 -70,0 -70,-20 -50,-20"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,1224 @@
+<template>
+  <div class="flex-1 overflow-auto resource-table" 
+       @mouseenter="() => $emit('setMouseOverTable', true)" 
+       @mouseleave="() => { $emit('setMouseOverTable', false); forceClearHoveredRow('table-exit'); }"
+       @scroll="() => forceClearHoveredRow('scroll')">
+    <table class="min-w-full bg-white dark:bg-gray-800" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
+      <!-- Table Header -->
+      <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 sticky top-0 z-10 backdrop-blur-sm">
+        <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+          <th
+            v-for="header in headerGroup.headers"
+            :key="header.id"
+            :colSpan="header.colSpan"
+            :style="{ width: header.getSize() + 'px' }"
+            class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider relative select-none"
+            :class="[
+              header.column.getCanSort() ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 group' : '',
+            ]"
+            @click="header.column.getToggleSortingHandler()?.($event)"
+            @mouseenter="$emit('clearHoveredRow', 'header-hover')"
+          >
+            <div class="flex items-center space-x-1">
+              <FlexRender
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
+              <!-- Sort indicator -->
+              <div v-if="header.column.getCanSort()" class="w-3 h-3">
+                <svg v-if="header.column.getIsSorted() === 'asc'" 
+                     class="w-3 h-3 text-gray-500" 
+                     fill="currentColor" 
+                     viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
+                </svg>
+                <svg v-else-if="header.column.getIsSorted() === 'desc'" 
+                     class="w-3 h-3 text-gray-500" 
+                     fill="currentColor" 
+                     viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                <svg v-else 
+                     class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" 
+                     fill="currentColor" 
+                     viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Column resize handle -->
+            <div
+              v-if="header.column.getCanResize()"
+              @mousedown="header.getResizeHandler()?.($event)"
+              @touchstart="header.getResizeHandler()?.($event)"
+              class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500 transition-colors border-r-2 border-transparent hover:border-blue-500 active:bg-blue-600"
+              :class="[
+                header.column.getIsResizing() ? 'bg-blue-500 border-blue-500' : 'bg-transparent hover:bg-blue-300 dark:hover:bg-blue-600'
+              ]"
+            ></div>
+          </th>
+        </tr>
+      </thead>
+
+      <!-- Table Body -->
+      <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tr
+          v-for="row in table.getRowModel().rows"
+          :key="row.id"
+          data-testid="resource-row"
+          @click="$emit('selectItem', row.original)"
+          @mouseenter="$emit('setHoveredRow', row.original.metadata?.uid, `table-row-${row.index}`)"
+          @mouseleave="$emit('clearHoveredRow', `table-row-${row.index}`)"
+          :class="[
+            'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer',
+            selectedItem?.metadata?.uid === row.original.metadata?.uid ? 'bg-blue-50 dark:bg-blue-900/30' : '',
+            selectedItems.has(row.original.metadata?.uid || '') ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+          ]"
+        >
+          <td
+            v-for="cell in row.getVisibleCells()"
+            :key="cell.id"
+            :style="{ width: cell.column.getSize() + 'px' }"
+            class="px-3 py-1 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-gray-600 dark:text-gray-400"
+            :data-column-id="cell.column.id"
+          >
+            <FlexRender
+              :render="cell.column.columnDef.cell"
+              :props="cell.getContext()"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, h } from 'vue'
+import {
+  getCoreRowModel,
+  getSortedRowModel,
+  useVueTable,
+  FlexRender,
+  type ColumnDef,
+  type SortingState,
+  type ColumnResizeMode
+} from '@tanstack/vue-table'
+import type { K8sListItem, K8sResource, ContainerStatus } from '@/types'
+import { useResourceStatus } from '@/composables/useResourceStatus'
+
+interface Props {
+  resource: K8sResource | null
+  items: K8sListItem[]
+  selectedItems: Set<string>
+  selectedItem: K8sListItem | null
+  hoveredRowId: string | null
+  isMouseOverTable: boolean
+  getStatusText: (item: K8sListItem) => string
+  getStatusClass: (item: K8sListItem) => string
+  getAge: (timestamp?: string) => string
+  getTotalRestartCount: (item: K8sListItem) => number
+  getControlledBy: (item: K8sListItem) => string | null
+  getQoSClass: (item: K8sListItem) => string
+  getContainerStatusColor: (container: ContainerStatus) => string
+  getContainerStatusText: (container: ContainerStatus) => string
+}
+
+interface Emits {
+  'toggleSelectAll': []
+  'toggleItemSelection': [item: K8sListItem]
+  'selectItem': [item: K8sListItem]
+  'setHoveredRow': [itemId: string | undefined, source: string]
+  'clearHoveredRow': [source: string]
+  'setMouseOverTable': [value: boolean]
+  'openPodLogs': [pod: K8sListItem]
+  'openPodShell': [pod: K8sListItem]
+  'deleteResource': [item: K8sListItem]
+  'selectNamespace': [namespace: string]
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
+
+// Import helper functions for accessing resource-specific fields
+const { getGenericStatus, getGenericSpec } = useResourceStatus()
+
+// State
+const sorting = ref<SortingState>([])
+const columnSizing = ref<Record<string, number>>({})
+const columnResizeMode = ref<ColumnResizeMode>('onChange')
+
+// Load column sizes from localStorage
+const storageKey = computed(() => `kide-column-sizes-${props.resource?.kind || 'unknown'}`)
+
+function loadColumnSizes(): Record<string, number> {
+  try {
+    const saved = localStorage.getItem(storageKey.value)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveColumnSizes(columnSizing: Record<string, number>) {
+  try {
+    localStorage.setItem(storageKey.value, JSON.stringify(columnSizing))
+  } catch (error) {
+    console.warn('Failed to save column sizes:', error)
+  }
+}
+
+
+// Define columns
+const columns = computed((): ColumnDef<K8sListItem>[] => {
+  const savedSizes = loadColumnSizes()
+  
+  const baseColumns: ColumnDef<K8sListItem>[] = [
+    {
+      id: 'select',
+      header: () => h('input', {
+        type: 'checkbox',
+        checked: props.selectedItems.size > 0 && props.selectedItems.size === props.items.length,
+        indeterminate: props.selectedItems.size > 0 && props.selectedItems.size < props.items.length,
+        onChange: () => emit('toggleSelectAll'),
+        class: 'rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700'
+      }),
+      cell: ({ row }) => h('input', {
+        type: 'checkbox',
+        checked: props.selectedItems.has(row.original.metadata?.uid || ''),
+        onChange: (e: Event) => {
+          e.stopPropagation()
+          emit('toggleItemSelection', row.original)
+        },
+        onClick: (e: Event) => e.stopPropagation(),
+        class: 'rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700'
+      }),
+      size: savedSizes.select || 60,
+      minSize: 50,
+      enableSorting: false,
+      enableResizing: true
+    },
+    {
+      accessorKey: 'metadata.name',
+      id: 'name',
+      header: 'Name',
+      cell: ({ row, getValue }) => {
+        const name = getValue() as string || 'Unknown'
+        return h('div', {
+          class: 'relative w-full',
+          'data-resource-name': name
+        }, [
+          h('div', { 
+            class: 'truncate min-w-0 text-gray-600 dark:text-gray-400',
+            title: name
+          }, name),
+          // Hover buttons positioned floating on the right side above text
+          h('div', {
+            class: [
+              'absolute right-2 top-0 bottom-0 flex items-center space-x-1 transition-opacity duration-150 z-10',
+              props.hoveredRowId === row.original.metadata?.uid ? 'opacity-100' : 'opacity-0'
+            ],
+            style: { pointerEvents: props.hoveredRowId === row.original.metadata?.uid ? 'auto' : 'none' },
+            onMouseenter: () => emit('setHoveredRow', row.original.metadata?.uid, 'button-container'),
+            onClick: (e: Event) => e.stopPropagation()
+          }, createHoverButtons(row.original))
+        ])
+      },
+      size: savedSizes.name || 200,
+      minSize: 50,
+      enableSorting: true,
+      enableResizing: true
+    }
+  ]
+
+  // Add namespace column if resource is namespaced
+  if (props.resource?.namespaced) {
+    baseColumns.push({
+      accessorKey: 'metadata.namespace',
+      id: 'namespace',
+      header: 'Namespace',
+      cell: ({ getValue }) => {
+        const namespace = getValue() as string
+        if (namespace) {
+          return h('button', {
+            class: 'px-1.5 py-0 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs rounded-full truncate max-w-full inline-block hover:bg-blue-100 dark:hover:bg-blue-800 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer',
+            title: `Filter by namespace: ${namespace}`,
+            onClick: (e: Event) => {
+              e.stopPropagation()
+              emit('selectNamespace', namespace)
+            }
+          }, namespace)
+        }
+        return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+      },
+      size: savedSizes.namespace || 120,
+      minSize: 50,
+      enableSorting: true,
+      enableResizing: true
+    })
+  }
+
+  // Add Job-specific columns
+  if (props.resource?.kind === 'Job') {
+    baseColumns.push(
+      {
+        id: 'succeeded',
+        header: 'Succeeded',
+        cell: ({ row }) => {
+          const succeeded = getGenericStatus(row.original)?.succeeded || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              succeeded > 0 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-gray-500 dark:text-gray-400'
+            ]
+          }, succeeded.toString())
+        },
+        size: savedSizes.succeeded || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'completions',
+        header: 'Completions',
+        cell: ({ row }) => {
+          const completions = getGenericSpec(row.original)?.completions
+          const succeeded = getGenericStatus(row.original)?.succeeded || 0
+          if (completions) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400',
+              title: `${succeeded} of ${completions} completions`
+            }, `${succeeded}/${completions}`)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.completions || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'parallelism',
+        header: 'Parallelism',
+        cell: ({ row }) => {
+          const parallelism = getGenericSpec(row.original)?.parallelism
+          if (parallelism !== undefined) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400'
+            }, parallelism.toString())
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '1')
+        },
+        size: savedSizes.parallelism || 80,
+        minSize: 60,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'duration',
+        header: 'Duration',
+        cell: ({ row }) => {
+          const startTime = getGenericStatus(row.original)?.startTime
+          const completionTime = getGenericStatus(row.original)?.completionTime
+          
+          if (startTime) {
+            const start = new Date(startTime).getTime()
+            const end = completionTime ? new Date(completionTime).getTime() : Date.now()
+            const durationMs = end - start
+            const duration = getJobDuration(durationMs)
+            
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400',
+              title: completionTime ? 'Completed' : 'Running'
+            }, duration)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.duration || 80,
+        minSize: 60,
+        enableSorting: false,
+        enableResizing: true
+      },
+      {
+        id: 'suspend',
+        header: 'Suspend',
+        cell: ({ row }) => {
+          const suspend = getGenericSpec(row.original)?.suspend
+          return h('div', {
+            class: [
+              'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium',
+              suspend 
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+            ]
+          }, suspend ? 'Yes' : 'No')
+        },
+        size: savedSizes.suspend || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  }
+
+  // Add CronJob-specific columns
+  if (props.resource?.kind === 'CronJob') {
+    baseColumns.push(
+      {
+        id: 'schedule',
+        header: 'Schedule',
+        cell: ({ row }) => {
+          const schedule = getGenericSpec(row.original)?.schedule
+          if (schedule) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400 font-mono',
+              title: `Schedule: ${schedule}`
+            }, schedule)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.schedule || 120,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'timezone',
+        header: 'Timezone',
+        cell: ({ row }) => {
+          const timezone = getGenericSpec(row.original)?.timeZone
+          if (timezone) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400',
+              title: `Timezone: ${timezone}`
+            }, timezone)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, 'UTC')
+        },
+        size: savedSizes.timezone || 100,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'suspend',
+        header: 'Suspend',
+        cell: ({ row }) => {
+          const suspend = getGenericSpec(row.original)?.suspend
+          return h('div', {
+            class: [
+              'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium',
+              suspend 
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+            ]
+          }, suspend ? 'Yes' : 'No')
+        },
+        size: savedSizes.suspend || 80,
+        minSize: 60,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'active',
+        header: 'Active',
+        cell: ({ row }) => {
+          const activeJobs = getGenericStatus(row.original)?.active?.length || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              activeJobs > 0 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-gray-500 dark:text-gray-400'
+            ]
+          }, activeJobs.toString())
+        },
+        size: savedSizes.active || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'lastSchedule',
+        header: 'Last Schedule',
+        cell: ({ row }) => {
+          const lastScheduleTime = getGenericStatus(row.original)?.lastScheduleTime
+          if (lastScheduleTime) {
+            const age = props.getAge(lastScheduleTime)
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400',
+              title: new Date(lastScheduleTime).toLocaleString()
+            }, `${age} ago`)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, 'Never')
+        },
+        size: savedSizes.lastSchedule || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  }
+
+  // Add Pod-specific columns
+  if (props.resource?.kind === 'Pod') {
+    baseColumns.push(
+      {
+        id: 'containers',
+        header: 'Containers',
+        cell: ({ row }) => createContainersCell(row.original),
+        size: savedSizes.containers || 100,
+        minSize: 50,
+        enableSorting: false,
+        enableResizing: true
+      },
+      {
+        id: 'restarts',
+        header: 'Restarts',
+        cell: ({ row }) => h('span', {
+          class: 'text-xs text-gray-600 dark:text-gray-400'
+        }, props.getTotalRestartCount(row.original).toString()),
+        size: savedSizes.restarts || 80,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'controlled_by',
+        header: 'Controlled By',
+        cell: ({ row }) => {
+          const controlledBy = props.getControlledBy(row.original)
+          if (controlledBy) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+              title: controlledBy
+            }, controlledBy)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.controlled_by || 140,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'node',
+        header: 'Node',
+        cell: ({ row }) => {
+          // Backend sends camelCase field names as per k8s-openapi serialization
+          const nodeName = (getGenericSpec(row.original) as any)?.nodeName
+          if (nodeName) {
+            return h('div', {
+              class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+              title: nodeName
+            }, nodeName)
+          }
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.node || 120,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'qos',
+        header: 'QoS',
+        cell: ({ row }) => {
+          const qosClass = props.getQoSClass(row.original)
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              qosClass === 'Guaranteed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+              qosClass === 'Burstable' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+              qosClass === 'BestEffort' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+            ],
+            title: qosClass
+          }, qosClass)
+        },
+        size: savedSizes.qos || 80,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  }
+
+  // Add NetworkPolicy-specific columns
+  if (props.resource?.kind === 'NetworkPolicy') {
+    baseColumns.push(
+      {
+        id: 'policyType',
+        header: 'Policy Type',
+        cell: ({ row }) => {
+          const policyTypes = getGenericSpec(row.original)?.policyTypes
+          let displayValue = 'Ingress' // Default
+
+          if (policyTypes) {
+            if (policyTypes.includes('Ingress') && policyTypes.includes('Egress')) {
+              displayValue = 'Both'
+            } else if (policyTypes.includes('Ingress')) {
+              displayValue = 'Ingress'
+            } else if (policyTypes.includes('Egress')) {
+              displayValue = 'Egress'
+            }
+          } else {
+            // Default behavior when policyTypes not specified
+            const hasEgress = getGenericSpec(row.original)?.egress != null
+            if (hasEgress) {
+              displayValue = 'Both'
+            }
+          }
+
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              displayValue === 'Both' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+              displayValue === 'Ingress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+              displayValue === 'Egress' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+            ],
+            title: `Policy handles ${displayValue.toLowerCase()} traffic`
+          }, displayValue)
+        },
+        size: savedSizes.policyType || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  }
+
+  // Add Deployment-specific columns (replace Status)
+  if (props.resource?.kind === 'Deployment') {
+    baseColumns.push(
+      {
+        id: 'ready',
+        header: 'Ready',
+        cell: ({ row }) => {
+          const readyReplicas = getGenericStatus(row.original)?.readyReplicas || 0
+          const replicas = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              readyReplicas === replicas && replicas > 0
+                ? 'text-green-600 dark:text-green-400'
+                : readyReplicas > 0
+                  ? 'text-yellow-600 dark:text-yellow-400'
+                  : 'text-red-600 dark:text-red-400'
+            ],
+            title: `${readyReplicas} of ${replicas} ready`
+          }, `${readyReplicas}/${replicas}`)
+        },
+        size: savedSizes.ready || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'desired',
+        header: 'Desired',
+        cell: ({ row }) => {
+          const desired = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: 'text-xs text-gray-600 dark:text-gray-400'
+          }, desired.toString())
+        },
+        size: savedSizes.desired || 60,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'updated',
+        header: 'Updated',
+        cell: ({ row }) => {
+          const updatedReplicas = getGenericStatus(row.original)?.updatedReplicas || 0
+          const replicas = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              updatedReplicas === replicas
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-yellow-600 dark:text-yellow-400'
+            ],
+            title: `${updatedReplicas} of ${replicas} updated`
+          }, updatedReplicas.toString())
+        },
+        size: savedSizes.updated || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'available',
+        header: 'Available',
+        cell: ({ row }) => {
+          const availableReplicas = getGenericStatus(row.original)?.availableReplicas || 0
+          const replicas = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              availableReplicas === replicas
+                ? 'text-green-600 dark:text-green-400'
+                : availableReplicas > 0
+                  ? 'text-yellow-600 dark:text-yellow-400'
+                  : 'text-red-600 dark:text-red-400'
+            ],
+            title: `${availableReplicas} of ${replicas} available`
+          }, availableReplicas.toString())
+        },
+        size: savedSizes.available || 80,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'conditions',
+        header: 'Conditions',
+        cell: ({ row }) => {
+          const conditions = getGenericStatus(row.original)?.conditions || []
+          const availableCondition = conditions.find((c: any) => c.type === 'Available')
+          const progressingCondition = conditions.find((c: any) => c.type === 'Progressing')
+          
+          if (availableCondition?.status === 'True' && progressingCondition?.status === 'True') {
+            return h('div', {
+              class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+              title: 'Deployment is available and progressing normally'
+            }, 'Healthy')
+          }
+          
+          if (availableCondition?.status === 'False') {
+            return h('div', {
+              class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+              title: availableCondition.reason || 'Not available'
+            }, 'Unavailable')
+          }
+          
+          if (progressingCondition?.status === 'False') {
+            return h('div', {
+              class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+              title: progressingCondition.reason || 'Not progressing'
+            }, 'Stalled')
+          }
+          
+          if (progressingCondition?.status === 'True') {
+            return h('div', {
+              class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+              title: 'Deployment is progressing'
+            }, 'Progressing')
+          }
+          
+          return h('div', {
+            class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+          }, 'Unknown')
+        },
+        size: savedSizes.conditions || 100,
+        minSize: 80,
+        enableSorting: false,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'StatefulSet') {
+    // Add StatefulSet-specific columns (replace Status)
+    baseColumns.push(
+      {
+        id: 'ready',
+        header: 'Ready',
+        cell: ({ row }) => {
+          const readyReplicas = getGenericStatus(row.original)?.readyReplicas || 0
+          const replicas = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: [
+              'text-xs font-medium',
+              readyReplicas === replicas && replicas > 0
+                ? 'text-green-600 dark:text-green-400'
+                : readyReplicas > 0
+                  ? 'text-yellow-600 dark:text-yellow-400'
+                  : 'text-red-600 dark:text-red-400'
+            ],
+            title: `${readyReplicas} of ${replicas} ready`
+          }, `${readyReplicas}/${replicas}`)
+        },
+        size: savedSizes.ready || 70,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'desired',
+        header: 'Desired',
+        cell: ({ row }) => {
+          const desired = getGenericSpec(row.original)?.replicas || 0
+          return h('div', {
+            class: 'text-xs text-gray-600 dark:text-gray-400'
+          }, desired.toString())
+        },
+        size: savedSizes.desired || 60,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'Service') {
+    // Add Service-specific columns (replace Status)
+    baseColumns.push(
+      {
+        id: 'type',
+        header: 'Type',
+        cell: ({ row }) => {
+          const type = getGenericSpec(row.original)?.type || 'ClusterIP'
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              type === 'LoadBalancer' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+              type === 'NodePort' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+              type === 'ClusterIP' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+              type === 'ExternalName' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+            ],
+            title: type
+          }, type)
+        },
+        size: savedSizes.type || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'clusterIP',
+        header: 'Cluster IP',
+        cell: ({ row }) => {
+          const clusterIP = getGenericSpec(row.original)?.clusterIP
+          if (!clusterIP || clusterIP === 'None') {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            title: clusterIP
+          }, clusterIP)
+        },
+        size: savedSizes.clusterIP || 120,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'externalIP',
+        header: 'External IP',
+        cell: ({ row }) => {
+          const externalIPs = getGenericSpec(row.original)?.externalIPs || []
+          const loadBalancerIPs = getGenericStatus(row.original)?.loadBalancer?.ingress || []
+          
+          // Show external IPs if specified
+          if (externalIPs.length > 0) {
+            return h('div', {
+              class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+              title: externalIPs.join(', ')
+            }, externalIPs.length > 1 ? `${externalIPs[0]} +${externalIPs.length - 1}` : externalIPs[0])
+          }
+          
+          // Show load balancer IPs if available
+          if (loadBalancerIPs.length > 0) {
+            const ips = loadBalancerIPs.map((ing: any) => ing.ip || ing.hostname).filter(Boolean)
+            if (ips.length > 0) {
+              return h('div', {
+                class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+                title: ips.join(', ')
+              }, ips.length > 1 ? `${ips[0]} +${ips.length - 1}` : ips[0])
+            }
+          }
+          
+          const type = getGenericSpec(row.original)?.type || 'ClusterIP'
+          if (type === 'LoadBalancer') {
+            return h('span', { 
+              class: 'text-yellow-500 dark:text-yellow-400 text-xs',
+              title: 'Waiting for external IP assignment'
+            }, 'Pending')
+          }
+          
+          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        },
+        size: savedSizes.externalIP || 120,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'ports',
+        header: 'Ports',
+        cell: ({ row }) => {
+          const ports = getGenericSpec(row.original)?.ports || []
+          if (ports.length === 0) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          
+          const portStrings = ports.map((port: any) => {
+            const portNum = port.port || port.targetPort
+            const protocol = port.protocol || 'TCP'
+            let result = `${portNum}/${protocol}`
+            
+            // Add node port if it's a NodePort or LoadBalancer service
+            if ((getGenericSpec(row.original)?.type === 'NodePort' || getGenericSpec(row.original)?.type === 'LoadBalancer') && port.nodePort) {
+              result += `:${port.nodePort}`
+            }
+            
+            return result
+          })
+          
+          const displayText = portStrings.length > 2 
+            ? `${portStrings.slice(0, 2).join(', ')} +${portStrings.length - 2}` 
+            : portStrings.join(', ')
+          
+          return h('div', {
+            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            title: portStrings.join(', ')
+          }, displayText)
+        },
+        size: savedSizes.ports || 140,
+        minSize: 100,
+        enableSorting: false,
+        enableResizing: true
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const status = props.getStatusText(row.original)
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              props.getStatusClass(row.original)
+            ],
+            title: status
+          }, status)
+        },
+        size: savedSizes.status || 90,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'EndpointSlice') {
+    // Add EndpointSlice-specific columns
+    baseColumns.push(
+      {
+        id: 'addressType',
+        header: 'Address Type',
+        cell: ({ row }) => {
+          const addressType = row.original.endpoint_slice?.addressType || 'IPv4'
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              addressType === 'IPv4' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+              addressType === 'IPv6' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+            ],
+            title: addressType
+          }, addressType)
+        },
+        size: savedSizes.addressType || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'ports',
+        header: 'Ports',
+        cell: ({ row }) => {
+          // EndpointSlice ports are at the top level
+          const ports = row.original.endpoint_slice?.ports || []
+          if (ports.length === 0) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          
+          // Show just the port numbers, similar to kubectl output
+          const portStrings = ports.map((port: any) => {
+            return port.port?.toString() || '?'
+          })
+          
+          const displayText = portStrings.length > 3 
+            ? `${portStrings.slice(0, 3).join(',')} +${portStrings.length - 3}`
+            : portStrings.join(',')
+          
+          return h('div', {
+            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            title: `Ports: ${portStrings.join(', ')}`
+          }, displayText)
+        },
+        size: savedSizes.ports || 120,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'endpoints',
+        header: 'Endpoints',
+        cell: ({ row }) => {
+          const endpoints = row.original.endpoint_slice?.endpoints || []
+          if (endpoints.length === 0) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          
+          // Extract all IP addresses from endpoints, similar to kubectl output
+          const allAddresses: string[] = []
+          endpoints.forEach((endpoint: any) => {
+            if (endpoint.addresses && Array.isArray(endpoint.addresses)) {
+              allAddresses.push(...endpoint.addresses)
+            }
+          })
+          
+          if (allAddresses.length === 0) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          
+          // Display addresses like kubectl: "10.2.119.219,10.2.136.69"
+          const displayText = allAddresses.length > 2 
+            ? `${allAddresses.slice(0, 2).join(',')} +${allAddresses.length - 2}`
+            : allAddresses.join(',')
+          
+          return h('div', {
+            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            title: `Endpoints: ${allAddresses.join(', ')}`
+          }, displayText)
+        },
+        size: savedSizes.endpoints || 140,
+        minSize: 100,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, and Endpoints have their own custom columns or no Status column needed
+  } else {
+    // Add status column for resources without custom columns
+    baseColumns.push(
+      {
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const status = props.getStatusText(row.original)
+          return h('div', {
+            class: [
+              'px-1.5 py-0 text-xs font-medium rounded-full truncate max-w-full inline-block',
+              props.getStatusClass(row.original)
+            ],
+            title: status
+          }, status)
+        },
+        size: savedSizes.status || 90,
+        minSize: 50,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  }
+
+  baseColumns.push(
+    {
+      accessorKey: 'metadata.creationTimestamp',
+      id: 'age',
+      header: 'Age',
+      cell: ({ getValue }) => {
+        const timestamp = getValue() as string
+        const age = props.getAge(timestamp)
+        return h('div', {
+          class: 'truncate max-w-full text-gray-500 dark:text-gray-400',
+          title: timestamp ? new Date(timestamp).toLocaleString() : undefined
+        }, age)
+      },
+      size: savedSizes.age || 80,
+      minSize: 50,
+      enableSorting: true,
+      enableResizing: true
+    }
+  )
+
+  return baseColumns
+})
+
+// Helper functions
+function getJobDuration(durationMs: number): string {
+  const seconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days}d ${hours % 24}h`
+  if (hours > 0) return `${hours}h ${minutes % 60}m`
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`
+  return `${seconds}s`
+}
+
+function createHoverButtons(item: K8sListItem) {
+  const buttons = []
+  
+  // Pod-specific buttons
+  if (props.resource?.kind === 'Pod') {
+    buttons.push(
+      h('button', {
+        onClick: (e: Event) => {
+          e.stopPropagation()
+          emit('openPodLogs', item)
+        },
+        class: 'w-6 h-6 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors duration-200',
+        title: 'View Pod Logs'
+      }, [
+        h('svg', {
+          class: 'w-3 h-3',
+          fill: 'none',
+          stroke: 'currentColor',
+          viewBox: '0 0 24 24'
+        }, [
+          h('path', {
+            'stroke-linecap': 'round',
+            'stroke-linejoin': 'round',
+            'stroke-width': '2',
+            d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+          })
+        ])
+      ]),
+      h('button', {
+        onClick: (e: Event) => {
+          e.stopPropagation()
+          emit('openPodShell', item)
+        },
+        class: 'w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-colors duration-200',
+        title: 'Open Shell'
+      }, [
+        h('svg', {
+          class: 'w-3 h-3',
+          fill: 'none',
+          stroke: 'currentColor',
+          viewBox: '0 0 24 24'
+        }, [
+          h('path', {
+            'stroke-linecap': 'round',
+            'stroke-linejoin': 'round',
+            'stroke-width': '2',
+            d: 'M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+          })
+        ])
+      ])
+    )
+  }
+
+  // Delete button
+  buttons.push(
+    h('button', {
+      onClick: (e: Event) => {
+        e.stopPropagation()
+        emit('deleteResource', item)
+      },
+      class: 'w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors duration-200',
+      title: `Delete ${props.resource?.kind || 'Resource'}`
+    }, [
+      h('svg', {
+        class: 'w-3 h-3',
+        fill: 'none',
+        stroke: 'currentColor',
+        viewBox: '0 0 24 24'
+      }, [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          'stroke-width': '2',
+          d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+        })
+      ])
+    ])
+  )
+
+  return buttons
+}
+
+function createContainersCell(item: K8sListItem) {
+  // Backend sends camelCase field names as per k8s-openapi serialization
+  const status = getGenericStatus(item) as any
+  const initContainerStatuses = status?.initContainerStatuses || []
+  const containerStatuses = status?.containerStatuses || []
+  
+  return h('div', { class: 'flex gap-1 items-center' }, [
+    // Init containers
+    ...(initContainerStatuses?.length ? [
+      h('div', { class: 'flex gap-0.5 pr-1 border-r border-gray-300' }, 
+        initContainerStatuses.map((container: any, index: number) =>
+          h('div', {
+            key: `init-${index}`,
+            class: 'relative group'
+          }, [
+            h('div', {
+              class: [
+                'w-2.5 h-2.5 rounded-sm border border-gray-400 cursor-help',
+                props.getContainerStatusColor(container)
+              ]
+            }),
+            // Tooltip
+            h('div', {
+              class: 'absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-50'
+            }, [
+              h('div', { class: 'font-medium' }, `Init: ${container.name}`),
+              h('div', { class: 'text-gray-300' }, props.getContainerStatusText(container))
+            ])
+          ])
+        )
+      )
+    ] : []),
+    // Regular containers
+    h('div', { class: 'flex gap-0.5' },
+      containerStatuses.map((container: any, index: number) =>
+        h('div', {
+          key: `container-${index}`,
+          class: 'relative group'
+        }, [
+          h('div', {
+            class: [
+              'w-2.5 h-2.5 rounded-sm border border-gray-400 cursor-help',
+              props.getContainerStatusColor(container)
+            ]
+          }),
+          // Tooltip
+          h('div', {
+            class: 'absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-50'
+          }, [
+            h('div', { class: 'font-medium' }, container.name),
+            h('div', { class: 'text-gray-300' }, props.getContainerStatusText(container))
+          ])
+        ])
+      )
+    )
+  ])
+}
+
+// Initialize column sizing from localStorage
+columnSizing.value = loadColumnSizes()
+
+// Create table instance
+const table = useVueTable({
+  get data() { return props.items },
+  get columns() { return columns.value },
+  state: {
+    get sorting() { return sorting.value },
+    get columnSizing() { return columnSizing.value }
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
+  onColumnSizingChange: (updater) => {
+    columnSizing.value = typeof updater === 'function' ? updater(columnSizing.value) : updater
+    saveColumnSizes(columnSizing.value)
+  },
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  columnResizeMode: columnResizeMode.value,
+  enableColumnResizing: true
+})
+
+function forceClearHoveredRow(reason: string) {
+  emit('clearHoveredRow', reason)
+}
+
+</script>

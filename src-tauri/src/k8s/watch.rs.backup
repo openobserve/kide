@@ -1,0 +1,1055 @@
+use super::client::K8sClient;
+use super::resources::{K8sListItem, WatchEvent};
+use futures::StreamExt;
+use k8s_openapi::api::{
+    apps::v1::{DaemonSet, Deployment, ReplicaSet, StatefulSet},
+    autoscaling::v2::HorizontalPodAutoscaler,
+    batch::v1::{CronJob, Job},
+    certificates::v1::CertificateSigningRequest,
+    core::v1::{ConfigMap, Endpoints, LimitRange, Namespace, Node, Pod, PersistentVolume, PersistentVolumeClaim, ReplicationController, ResourceQuota, Secret, Service, ServiceAccount},
+    discovery::v1::EndpointSlice,
+    networking::v1::{Ingress, IngressClass, NetworkPolicy},
+    node::v1::RuntimeClass,
+    policy::v1::PodDisruptionBudget,
+    rbac::v1::{ClusterRole, ClusterRoleBinding, Role, RoleBinding},
+    scheduling::v1::PriorityClass,
+    storage::v1::{CSIDriver, CSINode, StorageClass},
+};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+use k8s_openapi::kube_aggregator::pkg::apis::apiregistration::v1::APIService;
+use kube::{
+    api::Api,
+    runtime::{watcher, watcher::Config},
+};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
+use tokio::sync::Mutex;
+
+/// Generic typed watch creator that handles namespaced vs cluster-wide logic
+/// Used by the trait-based dispatch system
+pub fn create_typed_watch<T>(
+    client: kube::Client,
+    app_handle: AppHandle,
+    resource_type: String,
+    _namespaces: Option<Vec<String>>,
+    is_namespaced: bool,
+) -> tokio::task::JoinHandle<()>
+where
+    T: k8s_openapi::Resource + k8s_openapi::Metadata + Clone + std::fmt::Debug + serde::de::DeserializeOwned + serde::Serialize + Send + 'static,
+    <T as k8s_openapi::Resource>::Scope: Send,
+    T: kube::Resource<DynamicType = ()>,
+    <T as kube::Resource>::DynamicType: Default,
+{
+    if !is_namespaced {
+        // Cluster-wide resources always use Api::all()
+        let api: Api<T> = Api::all(client);
+        tokio::spawn(watch_resource(api, app_handle, resource_type))
+    } else {
+        // For namespaced resources, always use Api::all() for simplicity
+        // This is actually more efficient than managing multiple namespace-specific watches
+        let api: Api<T> = Api::all(client);
+        tokio::spawn(watch_resource(api, app_handle, resource_type))
+    }
+}
+
+// Helper function to create an API for multiple namespaces
+pub async fn watch_multiple_namespaces<T>(
+    client: kube::Client,
+    namespaces: Vec<String>,
+    app_handle: AppHandle,
+    resource_type: String,
+) -> ()
+where
+    T: k8s_openapi::Resource + k8s_openapi::Metadata + Clone + std::fmt::Debug + serde::de::DeserializeOwned + serde::Serialize + Send + 'static,
+    <T as k8s_openapi::Resource>::Scope: Send,
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope, DynamicType = ()>,
+    <T as kube::Resource>::DynamicType: Default,
+{
+    // Start separate watch tasks for each namespace and merge their results
+    let mut handles = Vec::new();
+    
+    for namespace in namespaces {
+        let api: Api<T> = Api::namespaced(client.clone(), &namespace);
+        let app_handle_clone = app_handle.clone();
+        let resource_type_clone = resource_type.clone();
+        
+        let handle = tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone));
+        handles.push(handle);
+    }
+    
+    // Wait for all namespace watches to complete
+    for handle in handles {
+        let _ = handle.await;
+    }
+}
+
+pub struct WatchManager {
+    client: K8sClient,
+    active_watches: Arc<Mutex<HashMap<String, tokio::task::JoinHandle<()>>>>,
+}
+
+impl WatchManager {
+    pub fn new(client: K8sClient) -> Self {
+        Self {
+            client,
+            active_watches: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    pub async fn start_watch(
+        &self,
+        app_handle: AppHandle,
+        resource_type: &str,
+        namespaces: Option<Vec<String>>,
+    ) -> Result<(), anyhow::Error> {
+        // Generate watch key from namespaces (sorted for consistency)
+        let watch_key = if let Some(ref ns_list) = namespaces {
+            if ns_list.is_empty() {
+                format!("{resource_type}:all")
+            } else {
+                let mut sorted_ns = ns_list.clone();
+                sorted_ns.sort();
+                format!("{}:{}", resource_type, sorted_ns.join(","))
+            }
+        } else {
+            format!("{resource_type}:all")
+        };
+        
+        let mut watches = self.active_watches.lock().await;
+        if watches.contains_key(&watch_key) {
+            return Ok(());
+        }
+
+        let client = self.client.get_client().await?;
+        let app_handle_clone = app_handle.clone();
+        let resource_type_clone = resource_type.to_string();
+
+        // Determine if we should watch all namespaces or specific ones
+        let watch_all = namespaces.is_none() || namespaces.as_ref().map_or(true, |ns| ns.is_empty());
+
+        // Create helper macro for resource watching
+        macro_rules! create_watch {
+            ($resource_type:ty, $namespaced:expr) => {{
+                if !$namespaced {
+                    // Cluster-wide resources always use Api::all()
+                    let api: Api<$resource_type> = Api::all(client);
+                    tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+                } else if watch_all {
+                    // Namespaced resources watching all namespaces
+                    let api: Api<$resource_type> = Api::all(client);
+                    tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+                } else {
+                    // Namespaced resources with specific namespace selection
+                    let namespaces = namespaces.unwrap();
+                    if namespaces.len() == 1 {
+                        let api: Api<$resource_type> = Api::namespaced(client, &namespaces[0]);
+                        tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+                    } else {
+                        tokio::spawn(watch_multiple_namespaces::<$resource_type>(
+                            client, 
+                            namespaces, 
+                            app_handle_clone, 
+                            resource_type_clone
+                        ))
+                    }
+                }
+            }};
+        }
+
+        let handle = match resource_type {
+            // Workloads - Namespaced resources
+            "pods" => create_watch!(Pod, true),
+            "deployments" => create_watch!(Deployment, true),
+            "statefulsets" => create_watch!(StatefulSet, true),
+            "daemonsets" => create_watch!(DaemonSet, true),
+            "jobs" => create_watch!(Job, true),
+            "cronjobs" => create_watch!(CronJob, true),
+            "replicasets" => create_watch!(ReplicaSet, true),
+            "replicationcontrollers" => create_watch!(ReplicationController, true),
+            
+            // Services & Networking - Namespaced resources
+            "services" => create_watch!(Service, true),
+            "ingresses" => create_watch!(Ingress, true),
+            "networkpolicies" => create_watch!(NetworkPolicy, true),
+            "endpointslices" => create_watch!(EndpointSlice, true),
+            "endpoints" => create_watch!(Endpoints, true),
+            
+            // Services & Networking - Cluster-wide resources
+            "ingressclasses" => {
+                let api: Api<IngressClass> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            
+            // Configuration & Storage - Namespaced resources
+            "configmaps" => create_watch!(ConfigMap, true),
+            "secrets" => create_watch!(Secret, true),
+            "persistentvolumeclaims" => create_watch!(PersistentVolumeClaim, true),
+            
+            // Configuration & Storage - Cluster-wide resources
+            "persistentvolumes" => {
+                let api: Api<PersistentVolume> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "storageclasses" => {
+                let api: Api<StorageClass> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "csidrivers" => {
+                let api: Api<CSIDriver> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "csinodes" => {
+                let api: Api<CSINode> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            
+            // Cluster Administration - Mixed scope
+            "serviceaccounts" => create_watch!(ServiceAccount, true),
+            "resourcequotas" => create_watch!(ResourceQuota, true),
+            "limitranges" => create_watch!(LimitRange, true),
+            "poddisruptionbudgets" => create_watch!(PodDisruptionBudget, true),
+            
+            // Cluster Administration - Cluster-wide resources
+            "namespaces" => {
+                let api: Api<Namespace> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "nodes" => {
+                let api: Api<Node> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "priorityclasses" => {
+                let api: Api<PriorityClass> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "runtimeclasses" => {
+                let api: Api<RuntimeClass> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            
+            // Security & Access Control - Mixed scope
+            "roles" => create_watch!(Role, true),
+            "rolebindings" => create_watch!(RoleBinding, true),
+            
+            // Security & Access Control - Cluster-wide resources
+            "clusterroles" => {
+                let api: Api<ClusterRole> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "clusterrolebindings" => {
+                let api: Api<ClusterRoleBinding> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "certificatesigningrequests" => {
+                let api: Api<CertificateSigningRequest> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            
+            // Scaling & Performance - Namespaced resources
+            "horizontalpodautoscalers" => create_watch!(HorizontalPodAutoscaler, true),
+            
+            // Custom Resources - Cluster-wide resources
+            "customresourcedefinitions" => {
+                let api: Api<CustomResourceDefinition> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            "apiservices" => {
+                let api: Api<APIService> = Api::all(client);
+                tokio::spawn(watch_resource(api, app_handle_clone, resource_type_clone))
+            }
+            
+            _ => {
+                return Err(anyhow::anyhow!("Unsupported resource type: {}", resource_type));
+            }
+        };
+
+        watches.insert(watch_key, handle);
+        Ok(())
+    }
+
+    pub async fn stop_watch(&self, resource_type: &str, namespaces: Option<Vec<String>>) -> Result<(), anyhow::Error> {
+        // Generate the same watch key as in start_watch
+        let watch_key = if let Some(ref ns_list) = namespaces {
+            if ns_list.is_empty() {
+                format!("{resource_type}:all")
+            } else {
+                let mut sorted_ns = ns_list.clone();
+                sorted_ns.sort();
+                format!("{}:{}", resource_type, sorted_ns.join(","))
+            }
+        } else {
+            format!("{resource_type}:all")
+        };
+        
+        let mut watches = self.active_watches.lock().await;
+        if let Some(handle) = watches.remove(&watch_key) {
+            handle.abort();
+        }
+        
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn stop_all_watches(&self) -> Result<(), anyhow::Error> {
+        let mut watches = self.active_watches.lock().await;
+        for (_, handle) in watches.drain() {
+            handle.abort();
+        }
+        Ok(())
+    }
+}
+
+async fn watch_resource<K>(api: Api<K>, app_handle: AppHandle, resource_type: String)
+where
+    K: kube::Resource<DynamicType = ()> + Clone + Send + 'static,
+    K: serde::de::DeserializeOwned,
+    K: std::fmt::Debug,
+    K: serde::Serialize,
+{
+    let mut stream = watcher(api, Config::default()).boxed();
+    
+    while let Some(event) = stream.next().await {
+        match event {
+            Ok(watcher::Event::Apply(obj)) => {
+                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                }
+            }
+            Ok(watcher::Event::Delete(obj)) => {
+                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted(item));
+                }
+            }
+            Ok(watcher::Event::InitApply(obj)) => {
+                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                }
+            }
+            Ok(watcher::Event::Init) => {
+                // Stream restarted, no action needed
+            }
+            Ok(watcher::Event::InitDone) => {
+                // Initialization complete, no action needed
+            }
+            Err(e) => {
+                eprintln!("Watch error for {}: {:?}", resource_type, e);
+                break;
+            }
+        }
+    }
+}
+
+fn resource_type_to_kind_and_api_version(resource_type: &str) -> (&str, &str) {
+    match resource_type {
+        // Workloads
+        "pods" => ("Pod", "v1"),
+        "deployments" => ("Deployment", "apps/v1"),
+        "statefulsets" => ("StatefulSet", "apps/v1"),
+        "daemonsets" => ("DaemonSet", "apps/v1"),
+        "jobs" => ("Job", "batch/v1"),
+        "cronjobs" => ("CronJob", "batch/v1"),
+        "replicasets" => ("ReplicaSet", "apps/v1"),
+        "replicationcontrollers" => ("ReplicationController", "v1"),
+        
+        // Services & Networking
+        "services" => ("Service", "v1"),
+        "ingresses" => ("Ingress", "networking.k8s.io/v1"),
+        "ingressclasses" => ("IngressClass", "networking.k8s.io/v1"),
+        "networkpolicies" => ("NetworkPolicy", "networking.k8s.io/v1"),
+        "endpointslices" => ("EndpointSlice", "discovery.k8s.io/v1"),
+        "endpoints" => ("Endpoints", "v1"),
+        
+        // Configuration
+        "configmaps" => ("ConfigMap", "v1"),
+        "secrets" => ("Secret", "v1"),
+        "resourcequotas" => ("ResourceQuota", "v1"),
+        "limitranges" => ("LimitRange", "v1"),
+        "poddisruptionbudgets" => ("PodDisruptionBudget", "policy/v1"),
+        
+        // Storage
+        "persistentvolumes" => ("PersistentVolume", "v1"),
+        "persistentvolumeclaims" => ("PersistentVolumeClaim", "v1"),
+        "storageclasses" => ("StorageClass", "storage.k8s.io/v1"),
+        "csidrivers" => ("CSIDriver", "storage.k8s.io/v1"),
+        "csinodes" => ("CSINode", "storage.k8s.io/v1"),
+        
+        // Cluster Administration
+        "namespaces" => ("Namespace", "v1"),
+        "nodes" => ("Node", "v1"),
+        "serviceaccounts" => ("ServiceAccount", "v1"),
+        "priorityclasses" => ("PriorityClass", "scheduling.k8s.io/v1"),
+        "runtimeclasses" => ("RuntimeClass", "node.k8s.io/v1"),
+        
+        // Security & Access Control
+        "roles" => ("Role", "rbac.authorization.k8s.io/v1"),
+        "clusterroles" => ("ClusterRole", "rbac.authorization.k8s.io/v1"),
+        "rolebindings" => ("RoleBinding", "rbac.authorization.k8s.io/v1"),
+        "clusterrolebindings" => ("ClusterRoleBinding", "rbac.authorization.k8s.io/v1"),
+        "certificatesigningrequests" => ("CertificateSigningRequest", "certificates.k8s.io/v1"),
+        
+        // Scaling
+        "horizontalpodautoscalers" => ("HorizontalPodAutoscaler", "autoscaling/v2"),
+        
+        // Custom Resources
+        "customresourcedefinitions" => ("CustomResourceDefinition", "apiextensions.k8s.io/v1"),
+        "apiservices" => ("APIService", "apiregistration.k8s.io/v1"),
+        
+        _ => (resource_type, "v1"), // fallback to the original if not found
+    }
+}
+
+fn convert_to_list_item<K>(obj: &K, resource_type: &str) -> Result<K8sListItem, anyhow::Error>
+where
+    K: kube::Resource,
+    K: serde::Serialize,
+    K: std::fmt::Debug,
+{
+    let meta = obj.meta();
+    let obj_json = serde_json::to_value(obj)?;
+    
+    // Convert resource type to proper Kubernetes Kind and API version
+    let (kind, api_version) = resource_type_to_kind_and_api_version(resource_type);
+    
+    // Create base K8sListItem with generic fields
+    let mut list_item = K8sListItem {
+        metadata: meta.clone(),
+        kind: kind.to_string(),
+        api_version: api_version.to_string(),
+        status: obj_json.get("status").cloned(),
+        spec: obj_json.get("spec").cloned(),
+        complete_object: Some(obj_json.clone()),
+        // Initialize all resource-specific fields as None - they'll be populated below based on resource type
+        pod_phase: None,
+        pod_ready_containers: None,
+        pod_restarts: None,
+        pod_ip: None,
+        pod_node: None,
+        deployment_replicas: None,
+        deployment_strategy: None,
+        deployment_available: None,
+        service_type: None,
+        service_cluster_ip: None,
+        service_external_ips: None,
+        service_ports: None,
+        ingress_class: None,
+        ingress_hosts: None,
+        ingress_address: None,
+        data_count: None,
+        secret_type: None,
+        node_status: None,
+        node_roles: None,
+        node_version: None,
+        node_internal_ip: None,
+        node_external_ip: None,
+        namespace_phase: None,
+        job_completions: None,
+        job_duration: None,
+        job_active: None,
+        cronjob_schedule: None,
+        cronjob_last_schedule: None,
+        cronjob_suspend: None,
+        statefulset_replicas: None,
+        statefulset_update_strategy: None,
+        daemonset_desired: None,
+        daemonset_current: None,
+        daemonset_ready: None,
+        replicaset_replicas: None,
+        pv_capacity: None,
+        pv_access_modes: None,
+        pv_status: None,
+        pv_reclaim_policy: None,
+        pv_storage_class: None,
+        pvc_capacity: None,
+        pvc_access_modes: None,
+        pvc_status: None,
+        pvc_storage_class: None,
+        sc_provisioner: None,
+        sc_reclaim_policy: None,
+        sc_volume_binding_mode: None,
+        address_type: None,
+        ports: None,
+        endpoints: None,
+        subsets: None,
+    };
+
+    // Extract resource-specific fields based on resource type
+    match resource_type {
+        "pods" => {
+            // Extract Pod-specific fields
+            if let Some(status) = obj_json.get("status") {
+                list_item.pod_phase = status.get("phase").and_then(|v| v.as_str()).map(|s| s.to_string());
+                list_item.pod_ip = status.get("podIP").and_then(|v| v.as_str()).map(|s| s.to_string());
+                
+                // Calculate ready containers
+                if let Some(container_statuses) = status.get("containerStatuses").and_then(|v| v.as_array()) {
+                    let ready_count = container_statuses.iter()
+                        .filter(|cs| cs.get("ready").and_then(|r| r.as_bool()).unwrap_or(false))
+                        .count();
+                    let total_count = container_statuses.len();
+                    list_item.pod_ready_containers = Some(format!("{}/{}", ready_count, total_count));
+                    
+                    // Calculate total restarts
+                    let total_restarts: i32 = container_statuses.iter()
+                        .filter_map(|cs| cs.get("restartCount").and_then(|r| r.as_i64()))
+                        .map(|r| r as i32)
+                        .sum();
+                    list_item.pod_restarts = Some(total_restarts);
+                }
+            }
+            if let Some(spec) = obj_json.get("spec") {
+                list_item.pod_node = spec.get("nodeName").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        },
+        "deployments" => {
+            // Extract Deployment-specific fields
+            if let Some(status) = obj_json.get("status") {
+                let replicas = status.get("replicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                let ready_replicas = status.get("readyReplicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                list_item.deployment_replicas = Some(format!("{}/{}", ready_replicas, replicas));
+                list_item.deployment_available = status.get("availableReplicas").and_then(|v| v.as_i64()).map(|i| i as i32);
+            }
+            if let Some(spec) = obj_json.get("spec") {
+                if let Some(strategy) = spec.get("strategy") {
+                    list_item.deployment_strategy = strategy.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+            }
+        },
+        "services" => {
+            // Extract Service-specific fields
+            if let Some(spec) = obj_json.get("spec") {
+                list_item.service_type = spec.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+                list_item.service_cluster_ip = spec.get("clusterIP").and_then(|v| v.as_str()).map(|s| s.to_string());
+                
+                if let Some(external_ips) = spec.get("externalIPs").and_then(|v| v.as_array()) {
+                    list_item.service_external_ips = Some(external_ips.iter()
+                        .filter_map(|ip| ip.as_str().map(|s| s.to_string()))
+                        .collect());
+                }
+                
+                if let Some(ports) = spec.get("ports").and_then(|v| v.as_array()) {
+                    list_item.service_ports = Some(ports.iter()
+                        .filter_map(|port| port.get("port").and_then(|p| p.as_i64()).map(|p| p.to_string()))
+                        .collect());
+                }
+            }
+        },
+        "ingresses" => {
+            // Extract Ingress-specific fields
+            if let Some(spec) = obj_json.get("spec") {
+                list_item.ingress_class = spec.get("ingressClassName").and_then(|v| v.as_str()).map(|s| s.to_string());
+                
+                if let Some(rules) = spec.get("rules").and_then(|v| v.as_array()) {
+                    list_item.ingress_hosts = Some(rules.iter()
+                        .filter_map(|rule| rule.get("host").and_then(|h| h.as_str().map(|s| s.to_string())))
+                        .collect());
+                }
+            }
+            if let Some(status) = obj_json.get("status") {
+                if let Some(lb) = status.get("loadBalancer") {
+                    if let Some(ingress) = lb.get("ingress").and_then(|v| v.as_array()) {
+                        if let Some(first_ingress) = ingress.first() {
+                            list_item.ingress_address = first_ingress.get("ip")
+                                .or_else(|| first_ingress.get("hostname"))
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                        }
+                    }
+                }
+            }
+        },
+        "configmaps" => {
+            // Extract ConfigMap-specific fields
+            if let Some(data) = obj_json.get("data").and_then(|v| v.as_object()) {
+                list_item.data_count = Some(data.len() as i32);
+            }
+        },
+        "secrets" => {
+            // Extract Secret-specific fields
+            if let Some(data) = obj_json.get("data").and_then(|v| v.as_object()) {
+                list_item.data_count = Some(data.len() as i32);
+            }
+            list_item.secret_type = obj_json.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+        },
+        "nodes" => {
+            // Extract Node-specific fields
+            if let Some(status) = obj_json.get("status") {
+                // Determine node status from conditions
+                if let Some(conditions) = status.get("conditions").and_then(|v| v.as_array()) {
+                    let ready_condition = conditions.iter()
+                        .find(|c| c.get("type").and_then(|t| t.as_str()) == Some("Ready"));
+                    if let Some(condition) = ready_condition {
+                        let status_str = condition.get("status").and_then(|s| s.as_str()).unwrap_or("Unknown");
+                        list_item.node_status = Some(if status_str == "True" { "Ready".to_string() } else { "NotReady".to_string() });
+                    }
+                }
+                
+                // Extract node info
+                if let Some(node_info) = status.get("nodeInfo") {
+                    list_item.node_version = node_info.get("kubeletVersion").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+                
+                // Extract addresses
+                if let Some(addresses) = status.get("addresses").and_then(|v| v.as_array()) {
+                    for addr in addresses {
+                        if let (Some(addr_type), Some(address)) = (
+                            addr.get("type").and_then(|t| t.as_str()),
+                            addr.get("address").and_then(|a| a.as_str())
+                        ) {
+                            match addr_type {
+                                "InternalIP" => list_item.node_internal_ip = Some(address.to_string()),
+                                "ExternalIP" => list_item.node_external_ip = Some(address.to_string()),
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Extract roles from labels
+            if let Some(labels) = obj_json.get("metadata").and_then(|m| m.get("labels")).and_then(|l| l.as_object()) {
+                let mut roles = Vec::new();
+                for (key, _) in labels {
+                    if key.starts_with("node-role.kubernetes.io/") {
+                        if let Some(role) = key.strip_prefix("node-role.kubernetes.io/") {
+                            if !role.is_empty() {
+                                roles.push(role.to_string());
+                            }
+                        }
+                    }
+                }
+                if roles.is_empty() {
+                    roles.push("worker".to_string());
+                }
+                list_item.node_roles = Some(roles);
+            }
+        },
+        "namespaces" => {
+            // Extract Namespace-specific fields
+            if let Some(status) = obj_json.get("status") {
+                list_item.namespace_phase = status.get("phase").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        },
+        "jobs" => {
+            // Extract Job-specific fields
+            if let Some(status) = obj_json.get("status") {
+                let completions = obj_json.get("spec")
+                    .and_then(|s| s.get("completions"))
+                    .and_then(|c| c.as_i64())
+                    .unwrap_or(1);
+                let succeeded = status.get("succeeded").and_then(|s| s.as_i64()).unwrap_or(0);
+                list_item.job_completions = Some(format!("{}/{}", succeeded, completions));
+                list_item.job_active = status.get("active").and_then(|a| a.as_i64()).map(|a| a as i32);
+                
+                // Calculate duration
+                if let (Some(start_time), completion_time) = (
+                    status.get("startTime").and_then(|st| st.as_str()),
+                    status.get("completionTime").and_then(|ct| ct.as_str())
+                ) {
+                    if let Some(end_time) = completion_time {
+                        list_item.job_duration = Some(format!("{}..{}", start_time, end_time));
+                    }
+                }
+            }
+        },
+        "cronjobs" => {
+            // Extract CronJob-specific fields
+            if let Some(spec) = obj_json.get("spec") {
+                list_item.cronjob_schedule = spec.get("schedule").and_then(|v| v.as_str()).map(|s| s.to_string());
+                list_item.cronjob_suspend = spec.get("suspend").and_then(|v| v.as_bool());
+            }
+            if let Some(status) = obj_json.get("status") {
+                list_item.cronjob_last_schedule = status.get("lastScheduleTime").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        },
+        "statefulsets" => {
+            // Extract StatefulSet-specific fields
+            if let Some(status) = obj_json.get("status") {
+                let replicas = status.get("replicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                let ready_replicas = status.get("readyReplicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                list_item.statefulset_replicas = Some(format!("{}/{}", ready_replicas, replicas));
+            }
+            if let Some(spec) = obj_json.get("spec") {
+                if let Some(update_strategy) = spec.get("updateStrategy") {
+                    list_item.statefulset_update_strategy = update_strategy.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+            }
+        },
+        "daemonsets" => {
+            // Extract DaemonSet-specific fields
+            if let Some(status) = obj_json.get("status") {
+                list_item.daemonset_desired = status.get("desiredNumberScheduled").and_then(|v| v.as_i64()).map(|i| i as i32);
+                list_item.daemonset_current = status.get("currentNumberScheduled").and_then(|v| v.as_i64()).map(|i| i as i32);
+                list_item.daemonset_ready = status.get("numberReady").and_then(|v| v.as_i64()).map(|i| i as i32);
+            }
+        },
+        "replicasets" => {
+            // Extract ReplicaSet-specific fields
+            if let Some(status) = obj_json.get("status") {
+                let replicas = status.get("replicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                let ready_replicas = status.get("readyReplicas").and_then(|v| v.as_i64()).unwrap_or(0);
+                list_item.replicaset_replicas = Some(format!("{}/{}", ready_replicas, replicas));
+            }
+        },
+        "persistentvolumes" => {
+            // Extract PersistentVolume-specific fields
+            if let Some(spec) = obj_json.get("spec") {
+                if let Some(capacity) = spec.get("capacity") {
+                    list_item.pv_capacity = capacity.get("storage").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
+                if let Some(access_modes) = spec.get("accessModes").and_then(|v| v.as_array()) {
+                    list_item.pv_access_modes = Some(access_modes.iter()
+                        .filter_map(|am| am.as_str().map(|s| s.to_string()))
+                        .collect());
+                }
+                list_item.pv_reclaim_policy = spec.get("persistentVolumeReclaimPolicy").and_then(|v| v.as_str()).map(|s| s.to_string());
+                list_item.pv_storage_class = spec.get("storageClassName").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+            if let Some(status) = obj_json.get("status") {
+                list_item.pv_status = status.get("phase").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        },
+        "persistentvolumeclaims" => {
+            // Extract PersistentVolumeClaim-specific fields
+            if let Some(spec) = obj_json.get("spec") {
+                if let Some(resources) = spec.get("resources") {
+                    if let Some(requests) = resources.get("requests") {
+                        list_item.pvc_capacity = requests.get("storage").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    }
+                }
+                if let Some(access_modes) = spec.get("accessModes").and_then(|v| v.as_array()) {
+                    list_item.pvc_access_modes = Some(access_modes.iter()
+                        .filter_map(|am| am.as_str().map(|s| s.to_string()))
+                        .collect());
+                }
+                list_item.pvc_storage_class = spec.get("storageClassName").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+            if let Some(status) = obj_json.get("status") {
+                list_item.pvc_status = status.get("phase").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        },
+        "storageclasses" => {
+            // Extract StorageClass-specific fields
+            list_item.sc_provisioner = obj_json.get("provisioner").and_then(|v| v.as_str()).map(|s| s.to_string());
+            list_item.sc_reclaim_policy = obj_json.get("reclaimPolicy").and_then(|v| v.as_str()).map(|s| s.to_string());
+            list_item.sc_volume_binding_mode = obj_json.get("volumeBindingMode").and_then(|v| v.as_str()).map(|s| s.to_string());
+        },
+        "endpointslices" => {
+            // Extract EndpointSlice specific fields from the JSON
+            if let Some(address_type) = obj_json.get("addressType").and_then(|v| v.as_str()) {
+                list_item.address_type = Some(address_type.to_string());
+            }
+            
+            if let Some(ports) = obj_json.get("ports").and_then(|v| v.as_array()) {
+                list_item.ports = Some(ports.iter().filter_map(|port| {
+                    let port_num = port.get("port")?.as_u64()? as u32;
+                    Some(super::resources::EndpointSlicePort {
+                        port: port_num,
+                        name: port.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                        protocol: port.get("protocol").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                        app_protocol: port.get("appProtocol").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    })
+                }).collect());
+            }
+            
+            if let Some(endpoints) = obj_json.get("endpoints").and_then(|v| v.as_array()) {
+                list_item.endpoints = Some(endpoints.iter().filter_map(|endpoint| {
+                    let addresses = endpoint.get("addresses")?.as_array()?
+                        .iter()
+                        .filter_map(|addr| addr.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>();
+                    if addresses.is_empty() {
+                        return None;
+                    }
+                    
+                    let conditions = endpoint.get("conditions").and_then(|c| {
+                        let ready = c.get("ready").and_then(|r| r.as_bool()).unwrap_or(false);
+                        let serving = c.get("serving").and_then(|s| s.as_bool());
+                        let terminating = c.get("terminating").and_then(|t| t.as_bool());
+                        Some(super::resources::EndpointConditions { ready, serving, terminating })
+                    });
+                    
+                    let target_ref = endpoint.get("targetRef").and_then(|tr| {
+                        let kind = tr.get("kind").and_then(|k| k.as_str())?;
+                        let name = tr.get("name").and_then(|n| n.as_str())?;
+                        Some(super::resources::EndpointTargetRef {
+                            kind: kind.to_string(),
+                            name: name.to_string(),
+                        })
+                    });
+                    
+                    let node_name = endpoint.get("nodeName").and_then(|n| n.as_str()).map(|s| s.to_string());
+                    let zone = endpoint.get("zone").and_then(|z| z.as_str()).map(|s| s.to_string());
+                    
+                    Some(super::resources::EndpointSliceEndpoint {
+                        addresses,
+                        conditions,
+                        target_ref,
+                        node_name,
+                        zone,
+                    })
+                }).collect());
+            }
+        },
+        "endpoints" => {
+            // Extract Endpoints specific fields from the JSON
+            if let Some(subsets) = obj_json.get("subsets").and_then(|v| v.as_array()) {
+                list_item.subsets = Some(subsets.iter().filter_map(|subset| {
+                    let addresses = subset.get("addresses")
+                        .and_then(|addrs| addrs.as_array())
+                        .map(|addrs| addrs.iter().filter_map(|addr| {
+                            addr.get("ip").and_then(|ip| ip.as_str()).map(|ip| super::resources::EndpointAddress {
+                                ip: ip.to_string(),
+                            })
+                        }).collect::<Vec<_>>());
+                    
+                    let not_ready_addresses = subset.get("notReadyAddresses")
+                        .and_then(|addrs| addrs.as_array())
+                        .map(|addrs| addrs.iter().filter_map(|addr| {
+                            addr.get("ip").and_then(|ip| ip.as_str()).map(|ip| super::resources::EndpointAddress {
+                                ip: ip.to_string(),
+                            })
+                        }).collect::<Vec<_>>());
+                    
+                    let ports = subset.get("ports")
+                        .and_then(|ports| ports.as_array())
+                        .map(|ports| ports.iter().filter_map(|port| {
+                            let port_num = port.get("port")?.as_u64()? as u32;
+                            Some(super::resources::EndpointPort {
+                                port: port_num,
+                                name: port.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                                protocol: port.get("protocol").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                            })
+                        }).collect::<Vec<_>>());
+                    
+                    Some(super::resources::EndpointSubset {
+                        addresses,
+                        not_ready_addresses,
+                        ports,
+                    })
+                }).collect());
+            }
+        },
+        _ => {
+            // For all other resource types, use the existing generic approach
+        }
+    }
+    
+    Ok(list_item)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use k8s_openapi::api::core::v1::Pod;
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn test_resource_type_to_kind_and_api_version() {
+        // Test workloads
+        assert_eq!(resource_type_to_kind_and_api_version("deployments"), ("Deployment", "apps/v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("pods"), ("Pod", "v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("statefulsets"), ("StatefulSet", "apps/v1"));
+        
+        // Test services
+        assert_eq!(resource_type_to_kind_and_api_version("services"), ("Service", "v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("ingresses"), ("Ingress", "networking.k8s.io/v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("ingressclasses"), ("IngressClass", "networking.k8s.io/v1"));
+        
+        // Test storage
+        assert_eq!(resource_type_to_kind_and_api_version("csidrivers"), ("CSIDriver", "storage.k8s.io/v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("csinodes"), ("CSINode", "storage.k8s.io/v1"));
+        
+        // Test cluster administration
+        assert_eq!(resource_type_to_kind_and_api_version("runtimeclasses"), ("RuntimeClass", "node.k8s.io/v1"));
+        
+        // Test security
+        assert_eq!(resource_type_to_kind_and_api_version("certificatesigningrequests"), ("CertificateSigningRequest", "certificates.k8s.io/v1"));
+        
+        // Test configuration
+        assert_eq!(resource_type_to_kind_and_api_version("configmaps"), ("ConfigMap", "v1"));
+        assert_eq!(resource_type_to_kind_and_api_version("secrets"), ("Secret", "v1"));
+        
+        // Test unknown resource type (fallback)
+        assert_eq!(resource_type_to_kind_and_api_version("unknown"), ("unknown", "v1"));
+    }
+
+    #[test]
+    fn test_watch_manager_creation() {
+        let client = K8sClient::new();
+        let _manager = WatchManager::new(client);
+        
+        // Manager should be created successfully
+        // We can't easily test the internal state without exposing more methods
+        // But we can test that it doesn't panic during creation
+    }
+
+    #[tokio::test]
+    async fn test_watch_key_generation() {
+        // Test the watch key format used internally
+        let resource_type = "pods";
+        let namespace = Some("default".to_string());
+        let watch_key = format!("{}:{}", resource_type, namespace.as_deref().unwrap_or("all"));
+        assert_eq!(watch_key, "pods:default");
+        
+        let cluster_wide_key = format!("{}:{}", "nodes", None::<String>.as_deref().unwrap_or("all"));
+        assert_eq!(cluster_wide_key, "nodes:all");
+    }
+
+    #[tokio::test]
+    async fn test_start_watch_without_connection() {
+        let client = K8sClient::new(); // Not connected
+        let manager = WatchManager::new(client);
+        
+        // This should fail since client is not connected
+        // We can't create a real AppHandle for testing, so we'll test the structure
+        
+        // Test that active_watches starts empty
+        let watches = manager.active_watches.lock().await;
+        assert!(watches.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_stop_watch_nonexistent() {
+        let client = K8sClient::new();
+        let manager = WatchManager::new(client);
+        
+        // Stopping a non-existent watch should not error
+        let result = manager.stop_watch("pods", Some(vec!["default".to_string()])).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_stop_all_watches() {
+        let client = K8sClient::new();
+        let manager = WatchManager::new(client);
+        
+        // Should not error even with no active watches
+        let result = manager.stop_all_watches().await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_convert_to_list_item() {
+        // Create a test Pod object
+        let mut labels = BTreeMap::new();
+        labels.insert("app".to_string(), "test".to_string());
+        
+        let pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("test-pod".to_string()),
+                namespace: Some("default".to_string()),
+                uid: Some("test-uid-123".to_string()),
+                labels: Some(labels),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let result = convert_to_list_item(&pod, "Pod");
+        assert!(result.is_ok());
+        
+        let item = result.unwrap();
+        assert_eq!(item.metadata.name, Some("test-pod".to_string()));
+        assert_eq!(item.metadata.namespace, Some("default".to_string()));
+        assert_eq!(item.metadata.uid, Some("test-uid-123".to_string()));
+        assert_eq!(item.kind, "Pod");
+        
+        // Check labels conversion
+        let labels = item.metadata.labels.unwrap();
+        assert_eq!(labels.get("app"), Some(&"test".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_list_item_minimal() {
+        // Test with minimal Pod (no labels, annotations, etc.)
+        let pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("minimal-pod".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let result = convert_to_list_item(&pod, "Pod");
+        assert!(result.is_ok());
+        
+        let item = result.unwrap();
+        assert_eq!(item.metadata.name, Some("minimal-pod".to_string()));
+        assert_eq!(item.metadata.namespace, None);
+        assert!(item.metadata.labels.is_none());
+        assert!(item.metadata.annotations.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_list_item_with_status() {
+        let pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("status-pod".to_string()),
+                ..Default::default()
+            },
+            status: Some(k8s_openapi::api::core::v1::PodStatus {
+                phase: Some("Running".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let result = convert_to_list_item(&pod, "Pod");
+        assert!(result.is_ok());
+        
+        let item = result.unwrap();
+        assert!(item.status.is_some());
+        
+        // The status should contain the phase
+        let status = item.status.unwrap();
+        if let Some(phase) = status.get("phase") {
+            assert_eq!(phase, "Running");
+        }
+    }
+
+    #[test]
+    fn test_resource_type_matching() {
+        // Test that we support all the expected resource types
+        let supported_types = vec![
+            "pods", "deployments", "services", "configmaps", "secrets",
+            "namespaces", "nodes", "statefulsets", "daemonsets", "jobs",
+            "cronjobs", "ingresses", "serviceaccounts", "networkpolicies",
+            "persistentvolumes", "persistentvolumeclaims", "storageclasses"
+        ];
+
+        // This tests the structure of our match statement in start_watch
+        // In a real test, we'd need to mock the Kubernetes API calls
+        for resource_type in supported_types {
+            // Each type should be handled in the match statement
+            // We can't easily test the actual matching without refactoring
+            // but we can ensure the types are consistent with our resources
+            assert!(!resource_type.is_empty());
+            assert!(resource_type.chars().all(|c| c.is_lowercase() || c.is_ascii_digit()));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_watch_operations() {
+        let client = K8sClient::new();
+        let manager = Arc::new(WatchManager::new(client));
+        let mut handles = vec![];
+
+        // Test concurrent stop operations
+        for i in 0..5 {
+            let manager_clone = manager.clone();
+            let handle = tokio::spawn(async move {
+                let resource = format!("pods-{}", i);
+                manager_clone.stop_watch(&resource, Some(vec!["default".to_string()])).await
+            });
+            handles.push(handle);
+        }
+
+        // All operations should complete successfully
+        for handle in handles {
+            let result = handle.await.unwrap();
+            assert!(result.is_ok());
+        }
+    }
+}
