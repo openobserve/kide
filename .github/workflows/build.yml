@@ -17,10 +17,13 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: kide-linux-x64
-          # macOS builds (universal binary includes both Intel and ARM64)
+          # macOS builds
           - os: macos-latest
-            target: universal-apple-darwin
-            artifact: kide-macos-universal
+            target: x86_64-apple-darwin
+            artifact: kide-macos-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: kide-macos-arm64
           # Windows builds
           - os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -101,7 +104,8 @@ jobs:
         generate_release_notes: true
         files: |
           kide-linux-x64/*
-          kide-macos-universal/*
+          kide-macos-x64/*
+          kide-macos-arm64/*
           kide-windows-x64/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
