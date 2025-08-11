@@ -17,23 +17,14 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: kide-linux-x64
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact: kide-linux-arm64
-          # macOS builds
+          # macOS builds (universal binary includes both Intel and ARM64)
           - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact: kide-macos-x64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: kide-macos-arm64
+            target: universal-apple-darwin
+            artifact: kide-macos-universal
           # Windows builds
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: kide-windows-x64
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            artifact: kide-windows-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -52,20 +43,11 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    - name: Install dependencies (Ubuntu x64)
-      if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu'
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-    - name: Install dependencies (Ubuntu ARM64)
-      if: matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
-        sudo dpkg --add-architecture arm64
-        sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev:arm64 libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64 patchelf
 
     - name: Install Node.js dependencies
       run: npm ci
@@ -119,10 +101,7 @@ jobs:
         generate_release_notes: true
         files: |
           kide-linux-x64/*
-          kide-linux-arm64/*
-          kide-macos-x64/*
-          kide-macos-arm64/*
+          kide-macos-universal/*
           kide-windows-x64/*
-          kide-windows-arm64/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
