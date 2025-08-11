@@ -210,6 +210,13 @@ function startResize(event: MouseEvent): void {
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
     savePanelPreferences()
+    
+    // Terminal refresh after panel resize (handled automatically by ResizeObserver in KideTerminal)
+    nextTick(() => {
+      if (terminalTabsRef.value) {
+        terminalTabsRef.value.refreshAllTerminals()
+      }
+    })
   }
   
   document.addEventListener('mousemove', handleMouseMove)

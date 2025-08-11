@@ -155,7 +155,7 @@
         }"
       >
         <!-- Shell Tab Content -->
-        <ResourceShell
+        <KideTerminal
           v-if="tab.type === 'shell'"
           :ref="(el) => setShellRef(tab.id, el)"
           :containers="tab.containers"
@@ -211,7 +211,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import ResourceShell from './ResourceShell.vue'
+import KideTerminal from './KideTerminal.vue'
 import ResourceLogs from './ResourceLogs.vue'
 
 interface TerminalTab {
@@ -483,6 +483,15 @@ function focusActiveTerminal(): void {
   }
 }
 
+// Refresh all terminal displays (for shell tabs)
+function refreshAllTerminals(): void {
+  shellRefs.value.forEach((shellComponent) => {
+    if (shellComponent && typeof shellComponent.refreshTerminal === 'function') {
+      shellComponent.refreshTerminal()
+    }
+  })
+}
+
 // Keyboard shortcuts
 function handleKeydown(event: KeyboardEvent): void {
   // Ctrl/Cmd + W to close current tab
@@ -527,6 +536,7 @@ defineExpose({
   updateTabLogState,
   loadLogsForTab,
   toggleLiveLoggingForTab,
+  refreshAllTerminals,
   terminalTabs: terminalTabs,
   activeTabId: activeTabId
 })
