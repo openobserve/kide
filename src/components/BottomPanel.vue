@@ -3,16 +3,13 @@
   <div 
     v-if="isOpen" 
     class="flex-none bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-xl"
-    :style="{ height: isMaximized ? '100vh' : panelHeight + 'px' }"
+    :style="{ height: panelHeight + 'px' }"
   >
     <UnifiedTerminalTabs
       ref="terminalTabsRef"
       :maxTabs="10"
-      :isMaximized="isMaximized"
       :isResizing="isResizing"
       @close="handleClose"
-      @minimize="handleMinimize"
-      @toggle-maximize="handleToggleMaximize"
       @start-resize="handleStartResize"
       @refresh-logs="handleRefreshLogs"
       @toggle-live-logging="handleToggleLiveLogging"
@@ -46,13 +43,11 @@ const terminalTabsRef = ref<any>(null)
 const panelHeight = ref(400)
 const minPanelHeight = 200
 const maxPanelHeight = ref(800)
-const isMaximized = ref(false)
 const isResizing = ref(false)
 const currentStreamId = ref<string | null>(null)
 
 // Panel preferences storage keys
 const PANEL_HEIGHT_KEY = 'kide-panel-height'
-const PANEL_MAXIMIZED_KEY = 'kide-panel-maximized'
 
 // Public methods for adding tabs
 function openPodLogs(pod: K8sListItem): void {
@@ -152,14 +147,6 @@ function handleClose(): void {
   emit('close')
 }
 
-function handleMinimize(): void {
-  handleClose()
-}
-
-function handleToggleMaximize(): void {
-  isMaximized.value = !isMaximized.value
-  savePanelPreferences()
-}
 
 function handleStartResize(event: MouseEvent): void {
   startResize(event)
@@ -190,7 +177,6 @@ async function stopLogStreaming(): Promise<void> {
 
 // Resize functionality
 function startResize(event: MouseEvent): void {
-  if (isMaximized.value) return
   
   isResizing.value = true
   const startY = event.clientY
@@ -237,7 +223,6 @@ function stopResize(): void {
 function savePanelPreferences(): void {
   try {
     localStorage.setItem(PANEL_HEIGHT_KEY, panelHeight.value.toString())
-    localStorage.setItem(PANEL_MAXIMIZED_KEY, isMaximized.value.toString())
   } catch (error) {
     console.warn('Failed to save panel preferences:', error)
   }
@@ -253,10 +238,6 @@ function loadPanelPreferences(): void {
       }
     }
     
-    const savedMaximized = localStorage.getItem(PANEL_MAXIMIZED_KEY)
-    if (savedMaximized) {
-      isMaximized.value = savedMaximized === 'true'
-    }
   } catch (error) {
     console.warn('Failed to load panel preferences:', error)
   }
@@ -267,23 +248,10 @@ function handleKeydown(event: KeyboardEvent): void {
   // Only handle shortcuts when panel is open
   if (!props.isOpen) return
   
-  // Ctrl/Cmd + Shift + M: Toggle maximize
-  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'M') {
-    event.preventDefault()
-    handleToggleMaximize()
-  }
-  
-  // Ctrl/Cmd + Shift + D: Minimize/close panel
+  // Ctrl/Cmd + Shift + D: Close panel
   if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
     event.preventDefault()
-    handleMinimize()
-  }
-  
-  // Escape: Close panel when maximized
-  if (event.key === 'Escape' && isMaximized.value) {
-    event.preventDefault()
-    isMaximized.value = false
-    savePanelPreferences()
+    handleClose()
   }
 }
 

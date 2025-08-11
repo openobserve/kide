@@ -64,7 +64,7 @@ class KideTerminal {
         cursor: '#ffffff',
       },
       fontFamily: '"Cascadia Code", "Fira Code", Monaco, Menlo, "Ubuntu Mono", monospace',
-      fontSize: 14,
+      fontSize: 12,
       lineHeight: 1.2,
       letterSpacing: 0,
       cursorBlink: true,

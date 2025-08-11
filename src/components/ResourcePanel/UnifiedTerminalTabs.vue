@@ -2,7 +2,6 @@
   <div class="h-full flex flex-col">
     <!-- Resize Handle -->
     <div 
-      v-if="!isMaximized"
       @mousedown="startResize"
       class="h-2 bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 dark:hover:bg-blue-400 cursor-row-resize transition-all relative group"
       :class="{ 'bg-blue-500 dark:bg-blue-400': isResizing }"
@@ -100,31 +99,6 @@
             {{ terminalTabs.length }} active
           </span>
           
-          <!-- Minimize Button -->
-          <button
-            @click="$emit('minimize')"
-            class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title="Minimize panel (Ctrl+Shift+D)"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-            </svg>
-          </button>
-          
-          <!-- Maximize/Restore Button -->
-          <button
-            @click="$emit('toggle-maximize')"
-            class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            :title="(isMaximized ? 'Restore panel (Esc)' : 'Maximize panel (Ctrl+Shift+M)')"
-          >
-            <svg v-if="!isMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9v-4.5M15 9h4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15v4.5M15 15h4.5m0 0l5.5 5.5"/>
-            </svg>
-          </button>
-          
           <!-- Close Button -->
           <button
             @click="$emit('close')"
@@ -182,8 +156,6 @@
             @toggle-live-logging="handleToggleLiveLogging(tab)"
             @container-changed="updateTabContainer(tab.id, $event)"
             @close="closeTab(tab.id)"
-            @minimize="$emit('minimize')"
-            @toggle-maximize="$emit('toggle-maximize')"
           />
         </div>
       </div>
@@ -233,21 +205,17 @@ interface TerminalTab {
 
 interface Props {
   maxTabs?: number
-  isMaximized?: boolean
   isResizing?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   maxTabs: 10,
-  isMaximized: false,
   isResizing: false
 })
 
 const emit = defineEmits<{
   'close': []
   'tab-changed': [tabId: string]
-  'minimize': []
-  'toggle-maximize': []
   'start-resize': [event: MouseEvent]
   'refresh-logs': [tab: TerminalTab]
   'toggle-live-logging': [tab: TerminalTab]
