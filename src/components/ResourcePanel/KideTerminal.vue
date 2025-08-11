@@ -1,5 +1,5 @@
 <template>
-  <div class="kide-terminal">
+  <div class="kide-terminal h-full">
     <!-- Terminal Container -->
     <div 
       ref="terminalContainer" 
@@ -45,6 +45,7 @@ class KideTerminal {
   private isConnected = false
   private isConnecting = false
   private shellEventUnlistener: UnlistenFn | null = null
+  public onConnectionStateChanged?: (connected: boolean, connecting: boolean) => void
   
   constructor(container: HTMLElement) {
     this.container = container
@@ -128,7 +129,6 @@ class KideTerminal {
       // If we were at the bottom, stay at the bottom
       // If user was scrolled up, maintain that scroll position
       
-      const buffer = this.terminal.buffer.active
       const wasAtBottom = this.isAtBottom()
       
       console.log('📍 KideTerminal: Resize - was at bottom:', wasAtBottom)
@@ -204,6 +204,7 @@ class KideTerminal {
     console.log('🔗 KideTerminal: Connecting to', { podName, namespace, containerName })
     
     this.isConnecting = true
+    this.onConnectionStateChanged?.(this.isConnected, this.isConnecting)
     
     try {
       if (this.terminal) {
@@ -224,12 +225,22 @@ class KideTerminal {
       
       this.sessionId = response
       this.isConnected = true
+      this.isConnecting = false
+      this.onConnectionStateChanged?.(this.isConnected, this.isConnecting)
       
       await this.setupShellEventListener()
       
       if (this.terminal) {
         this.terminal.writeln('✅ Connected to shell\r\n')
         this.terminal.focus()
+        
+        // Ensure terminal is properly fitted after connection
+        if (this.fitAddon) {
+          setTimeout(() => {
+            this.fitAddon?.fit()
+            console.log('🔧 KideTerminal: Re-fitted terminal after connection')
+          }, 200)
+        }
       }
       
       console.log('✅ KideTerminal: Connected successfully')
@@ -241,6 +252,7 @@ class KideTerminal {
       }
     } finally {
       this.isConnecting = false
+      this.onConnectionStateChanged?.(this.isConnected, this.isConnecting)
     }
   }
   
@@ -296,6 +308,40 @@ class KideTerminal {
     }
   }
   
+  public clearTerminal() {
+    if (this.terminal) {
+      console.log('🗑️ KideTerminal: Clearing terminal content')
+      this.terminal.clear()
+    }
+  }
+  
+  public refreshTerminal() {
+    if (this.fitAddon && this.terminal) {
+      console.log('🔧 KideTerminal: Refreshing terminal fit')
+      try {
+        this.fitAddon.fit()
+        console.log('✅ KideTerminal: Terminal fit refreshed')
+      } catch (error) {
+        console.error('❌ KideTerminal: Failed to refresh fit', error)
+      }
+    }
+  }
+  
+  public disconnect() {
+    if (this.isConnected && this.sessionId) {
+      console.log('🔌 KideTerminal: Disconnecting from shell')
+      invoke('stop_pod_shell', { sessionId: this.sessionId }).catch(console.error)
+      this.sessionId = null
+      this.isConnected = false
+      this.isConnecting = false
+      this.onConnectionStateChanged?.(this.isConnected, this.isConnecting)
+      
+      if (this.terminal) {
+        this.terminal.writeln('\r\n🔌 Disconnected from shell\r\n')
+      }
+    }
+  }
+  
   public dispose() {
     console.log('🗑️ KideTerminal: Disposing terminal')
     
@@ -336,6 +382,33 @@ class KideTerminal {
 // Component state
 const terminalContainer = ref<HTMLElement | null>(null)
 const kideTerminal = ref<KideTerminal | null>(null)
+const selectedContainer = ref<string>('')
+
+// Initialize selected container
+if (props.initialContainer) {
+  selectedContainer.value = props.initialContainer
+} else if (props.containers?.length) {
+  selectedContainer.value = props.containers[0].name
+}
+
+// Expose method for parent to change container
+function changeContainer(containerName: string) {
+  if (containerName && props.podName && props.namespace && kideTerminal.value) {
+    console.log('🔄 Container changed to:', containerName)
+    selectedContainer.value = containerName
+    
+    // Ensure connection state callback is set up
+    kideTerminal.value.onConnectionStateChanged = (connected: boolean, connecting: boolean) => {
+      emit('connection-state-changed', { isConnected: connected, isConnecting: connecting })
+    }
+    
+    // Disconnect current session and connect to new container
+    kideTerminal.value.disconnect()
+    kideTerminal.value.connect(props.podName, props.namespace, containerName)
+    // Emit container change event
+    emit('container-changed', containerName)
+  }
+}
 
 // Lifecycle
 onMounted(async () => {
@@ -344,10 +417,14 @@ onMounted(async () => {
   if (terminalContainer.value) {
     kideTerminal.value = new KideTerminal(terminalContainer.value)
     
+    // Set up connection state change callback
+    kideTerminal.value.onConnectionStateChanged = (connected: boolean, connecting: boolean) => {
+      emit('connection-state-changed', { isConnected: connected, isConnecting: connecting })
+    }
+    
     // Auto-connect if requested
-    if (props.autoConnect && props.podName && props.namespace) {
-      const containerName = props.initialContainer || props.containers?.[0]?.name || 'main'
-      await kideTerminal.value.connect(props.podName, props.namespace, containerName)
+    if (props.autoConnect && props.podName && props.namespace && selectedContainer.value) {
+      await kideTerminal.value.connect(props.podName, props.namespace, selectedContainer.value)
     }
   }
 })
@@ -365,12 +442,10 @@ defineExpose({
     kideTerminal.value?.focus()
   },
   refreshTerminal: () => {
-    // ResizeObserver handles refresh automatically
-    if (terminalContainer.value && kideTerminal.value) {
-      const container = terminalContainer.value
-      // Call the private method through a public interface
-      ;(kideTerminal.value as any).handleResize(container.clientWidth, container.clientHeight)
-    }
+    kideTerminal.value?.refreshTerminal()
+  },
+  changeContainer: (containerName: string) => {
+    changeContainer(containerName)
   }
 })
 </script>

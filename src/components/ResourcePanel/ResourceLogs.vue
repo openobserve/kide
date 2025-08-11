@@ -3,7 +3,7 @@
     <div class="flex-none px-6 py-2 border-b border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <select v-model="selectedContainer" class="text-sm border border-gray-300 rounded px-2 py-1">
+          <select v-model="selectedContainer" class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             <!-- Init Containers -->
             <optgroup v-if="initContainers?.length" label="Init Containers">
               <option v-for="container in initContainers" :key="`init-${container.name}`" :value="`init-${container.name}`">
@@ -38,7 +38,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search logs..."
-                class="text-sm border border-gray-300 rounded px-2 py-1 w-40 pr-8"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-40 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
@@ -47,7 +47,7 @@
                 @keydown.enter.shift="searchPrevious"
                 @keydown.escape="clearSearch"
               >
-              <div class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <div class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
@@ -90,7 +90,7 @@
         :key="index" 
         :ref="(el) => setLineRef(index, el as Element)"
         class="whitespace-pre-wrap"
-        :class="{ 'bg-yellow-900 bg-opacity-30': isMatchingLine(index) }"
+        :class="{ 'bg-yellow-900/10': isMatchingLine(index) }"
       >
         <span v-if="extractTimestamp(line)" class="text-gray-400">{{ extractTimestamp(line) }}</span>
         <span v-if="extractTimestamp(line)" v-html="highlightSearchInText(extractLogContent(line), index)"></span>
@@ -209,8 +209,8 @@ function highlightSearchInText(text: string, lineIndex: number): string {
       currentMatch.matchIndex === matchIndex
     matchIndex++
     return isCurrentMatch 
-      ? `<span class="bg-yellow-400 text-black font-bold">${match}</span>`
-      : `<span class="bg-yellow-600 text-black">${match}</span>`
+      ? `<span style="background-color: #fbbf24; color: #000; font-weight: bold; padding: 0 2px; border-radius: 2px;">${match}</span>`
+      : `<span style="background-color: #f59e0b; color: #000; padding: 0 2px; border-radius: 2px;">${match}</span>`
   })
 }
 

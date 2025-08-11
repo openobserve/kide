@@ -73,8 +73,50 @@
               ></div>
               <div v-else-if="tab.type === 'logs'" class="w-2 h-2 bg-gray-400 rounded-full mr-2 flex-shrink-0"></div>
               
-              <!-- Tab label -->
-              <span class="truncate">
+              <!-- Tab label with container dropdown for shell tabs -->
+              <div v-if="tab.type === 'shell'" class="flex items-center space-x-1 min-w-0">
+                <span class="truncate">{{ tab.podName }}</span>
+                <div class="relative">
+                  <button
+                    @click.stop="toggleContainerDropdown(tab.id)"
+                    class="flex items-center px-1 py-0.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    :class="{ 'bg-gray-200 dark:bg-gray-600': openDropdown === tab.id }"
+                  >
+                    <span class="max-w-16 truncate">{{ tab.containerName }}</span>
+                    <svg class="w-3 h-3 ml-1 transition-transform" :class="{ 'rotate-180': openDropdown === tab.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                  
+                  <!-- Container dropdown -->
+                  <div v-if="openDropdown === tab.id" class="absolute top-full left-0 mt-1 min-w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50">
+                    <div class="py-1">
+                      <button
+                        v-for="container in tab.containers"
+                        :key="container.name"
+                        @click.stop="selectContainer(tab.id, container.name)"
+                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        :class="{
+                          'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300': container.name === tab.containerName,
+                          'text-gray-700 dark:text-gray-300': container.name !== tab.containerName
+                        }"
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="truncate">{{ container.name }}</span>
+                          <span v-if="container.name === tab.containerName" class="ml-2 text-blue-600 dark:text-blue-400">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tab label for log tabs (no dropdown) -->
+              <span v-else class="truncate">
                 {{ tab.podName }}
               </span>
             </button>
@@ -224,6 +266,7 @@ const emit = defineEmits<{
 // State
 const terminalTabs = ref<TerminalTab[]>([])
 const activeTabId = ref<string | null>(null)
+const openDropdown = ref<string | null>(null)
 
 // Computed
 const hasActiveTabs = computed(() => terminalTabs.value.length > 0)
@@ -382,6 +425,35 @@ function updateTabContainer(tabId: string, containerName: string): void {
       tab.isLiveLogging = false // Stop live logging if active
       loadLogsForTab(tabId) // Load logs for new container
     }
+  }
+}
+
+// Container dropdown functions
+function toggleContainerDropdown(tabId: string): void {
+  openDropdown.value = openDropdown.value === tabId ? null : tabId
+}
+
+function selectContainer(tabId: string, containerName: string): void {
+  const tab = terminalTabs.value.find(t => t.id === tabId && t.type === 'shell')
+  if (tab && tab.containerName !== containerName) {
+    // Call changeContainer method on the shell component
+    const shellComponent = shellRefs.value.get(tabId)
+    if (shellComponent && typeof shellComponent.changeContainer === 'function') {
+      shellComponent.changeContainer(containerName)
+    }
+    
+    // Update tab state
+    tab.containerName = containerName
+  }
+  
+  // Close dropdown
+  openDropdown.value = null
+}
+
+// Close dropdown when clicking outside
+function handleClickOutside(event: MouseEvent): void {
+  if (openDropdown.value) {
+    openDropdown.value = null
   }
 }
 
@@ -615,11 +687,13 @@ import { onMounted, onUnmounted } from 'vue'
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', handleClickOutside)
   // Set up log event listener
   setupLogEventListener()
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
