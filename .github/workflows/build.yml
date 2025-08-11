@@ -171,7 +171,6 @@ jobs:
         # Windows files
         if [ -d "kide-windows-x64" ]; then
           find kide-windows-x64 -name "*.msi" -exec cp {} release-files/kide-windows-x64.msi \;
-          find kide-windows-x64 -name "*.exe" -not -path "*/bundle/*" -exec cp {} release-files/kide-windows-x64.exe \;
         fi
         
         ls -la release-files/ || echo "No release files found"
