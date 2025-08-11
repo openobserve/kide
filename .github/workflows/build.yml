@@ -16,9 +16,9 @@ jobs:
           # Linux builds
           - os: ubuntu-latest
             artifact: kide-linux-x64
-          # macOS builds  
+          # macOS builds (ARM64 on GitHub Actions)  
           - os: macos-latest
-            artifact: kide-macos-universal
+            artifact: kide-macos-arm64
           # Windows builds
           - os: windows-latest
             artifact: kide-windows-x64
@@ -59,8 +59,8 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: |
-          src-tauri/target/release/bundle/appimage/*.AppImage
-          src-tauri/target/release/bundle/deb/*.deb
+          src-tauri/target/release/bundle/appimage/
+          src-tauri/target/release/bundle/deb/
 
     - name: Upload binaries (macOS)
       if: matrix.os == 'macos-latest'
@@ -68,8 +68,8 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: |
-          src-tauri/target/release/bundle/dmg/*.dmg
-          src-tauri/target/release/bundle/macos/*.app
+          src-tauri/target/release/bundle/dmg/
+          src-tauri/target/release/bundle/macos/
 
     - name: Upload binaries (Windows)
       if: matrix.os == 'windows-latest'
@@ -77,7 +77,7 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: |
-          src-tauri/target/release/bundle/msi/*.msi
+          src-tauri/target/release/bundle/msi/
           src-tauri/target/release/*.exe
 
   release:
@@ -88,15 +88,35 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       
+    - name: Rename and organize artifacts
+      run: |
+        # Linux files
+        if [ -d "kide-linux-x64" ]; then
+          mkdir -p release-files
+          find kide-linux-x64 -name "*.AppImage" -exec cp {} release-files/kide-linux-x64.AppImage \;
+          find kide-linux-x64 -name "*.deb" -exec cp {} release-files/kide-linux-x64.deb \;
+        fi
+        
+        # macOS files  
+        if [ -d "kide-macos-arm64" ]; then
+          find kide-macos-arm64 -name "*.dmg" -exec cp {} release-files/kide-macos-arm64.dmg \;
+          find kide-macos-arm64 -name "*.app" -type d -exec zip -r release-files/kide-macos-arm64.app.zip {} \;
+        fi
+        
+        # Windows files
+        if [ -d "kide-windows-x64" ]; then
+          find kide-windows-x64 -name "*.msi" -exec cp {} release-files/kide-windows-x64.msi \;
+          find kide-windows-x64 -name "*.exe" -not -path "*/bundle/*" -exec cp {} release-files/kide-windows-x64.exe \;
+        fi
+        
+        ls -la release-files/ || echo "No release files found"
+      
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         draft: false
         prerelease: false
         generate_release_notes: true
-        files: |
-          kide-linux-x64/*
-          kide-macos-universal/*
-          kide-windows-x64/*
+        files: release-files/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
