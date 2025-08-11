@@ -101,8 +101,7 @@
                           color: container.name === tab.containerName ? '#1d4ed8' : '#374151',
                           fontWeight: container.name === tab.containerName ? 'bold' : 'normal'
                         }"
-                        @mouseover="$event.target.style.backgroundColor = container.name === tab.containerName ? '#bfdbfe' : '#f3f4f6'"
-                        @mouseleave="$event.target.style.backgroundColor = container.name === tab.containerName ? '#dbeafe' : 'transparent'"
+                        class="dropdown-item"
                       >
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                           <span>{{ container.name }}</span>
@@ -221,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import KideTerminal from './KideTerminal.vue'
@@ -249,10 +248,7 @@ interface Props {
   isResizing?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  maxTabs: 10,
-  isResizing: false
-})
+defineProps<Props>()
 
 const emit = defineEmits<{
   'close': []
@@ -267,8 +263,6 @@ const terminalTabs = ref<TerminalTab[]>([])
 const activeTabId = ref<string | null>(null)
 const openDropdown = ref<string | null>(null)
 
-// Computed
-const hasActiveTabs = computed(() => terminalTabs.value.length > 0)
 
 // Methods
 function addShellTab(podData: {
@@ -292,7 +286,7 @@ function addShellTab(podData: {
   }
   
   // Create new shell tab
-  const tabId = `shell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const tabId = `shell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
   const newTab: TerminalTab = {
     id: tabId,
     type: 'shell',
@@ -339,7 +333,7 @@ function addLogTab(podData: {
   }
   
   // Create new log tab
-  const tabId = `logs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const tabId = `logs-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
   const newTab: TerminalTab = {
     id: tabId,
     type: 'logs',
@@ -464,7 +458,7 @@ function selectContainer(tabId: string, containerName: string): void {
 }
 
 // Close dropdown when clicking outside
-function handleClickOutside(event: MouseEvent): void {
+function handleClickOutside(): void {
   if (openDropdown.value) {
     openDropdown.value = null
   }
@@ -697,7 +691,6 @@ function handleToggleLiveLogging(tab: TerminalTab): void {
 }
 
 // Set up keyboard shortcuts on mount
-import { onMounted, onUnmounted } from 'vue'
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
@@ -711,3 +704,9 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
+
+<style scoped>
+.dropdown-item:hover {
+  background-color: #f3f4f6 !important;
+}
+</style>
