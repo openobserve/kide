@@ -270,6 +270,10 @@ async function initializeTerminal(): Promise<void> {
       macOptionIsMeta: true,
       rightClickSelectsWord: true,
       screenReaderMode: false,
+      // Enable scrollbar
+      scrollSensitivity: 3,
+      fastScrollSensitivity: 5,
+      scrollOnUserInput: true,
     })
     
     // Add addons
@@ -525,3 +529,42 @@ function cleanup(): void {
   }
 }
 </script>
+
+<style scoped>
+/* Ensure terminal container allows scrolling */
+:deep(.xterm) {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+:deep(.xterm-viewport) {
+  overflow-y: scroll !important;
+  overflow-x: hidden;
+  /* Show scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #888 #2a2a2a;
+}
+
+/* Webkit scrollbar styling */
+:deep(.xterm-viewport::-webkit-scrollbar) {
+  width: 12px;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-track) {
+  background: #2a2a2a;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb) {
+  background: #888;
+  border-radius: 6px;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
+  background: #aaa;
+}
+
+/* Ensure the terminal screen allows proper scrolling */
+:deep(.xterm-screen) {
+  min-height: 100%;
+}
+</style>
