@@ -61,11 +61,11 @@
                 </svg>
               </div>
             </div>
-            <div v-if="searchQuery && searchMatches.length > 0" class="flex items-center space-x-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>{{ currentMatchIndex + 1 }} of {{ searchMatches.length }}</span>
+            <div v-if="searchQuery && searchManager.hasMatches" class="flex items-center space-x-1 text-xs text-gray-600 dark:text-gray-400">
+              <span>{{ searchManager.currentIndex + 1 }} of {{ searchManager.matches.length }}</span>
               <button 
                 @click="searchPrevious"
-                :disabled="searchMatches.length === 0"
+                :disabled="!searchManager.hasMatches"
                 class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded disabled:opacity-50"
                 title="Previous match (Shift+Enter)"
               >
@@ -75,7 +75,7 @@
               </button>
               <button 
                 @click="searchNext"
-                :disabled="searchMatches.length === 0"
+                :disabled="!searchManager.hasMatches"
                 class="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded disabled:opacity-50"
                 title="Next match (Enter)"
               >
@@ -111,6 +111,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { LogSearchManager, extractTimestamp, extractLogContent } from '@/utils/logUtils'
 
 interface Props {
   containers?: any[]
@@ -134,8 +135,7 @@ const selectedContainer = ref('')
 
 // Search functionality
 const searchQuery = ref('')
-const searchMatches = ref<{ lineIndex: number; matchIndex: number }[]>([])
-const currentMatchIndex = ref(0)
+const searchManager = new LogSearchManager()
 const logContainer = ref<HTMLElement | null>(null)
 const lineRefs = ref<Map<number, HTMLElement>>(new Map())
 
@@ -158,19 +158,8 @@ watch(selectedContainer, (value) => {
   emit('container-changed', value)
 })
 
-// Function to extract timestamp from log line
-const extractTimestamp = (line: string): string | null => {
-  // Match ISO 8601 timestamp at the beginning of the line
-  const timestampRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+/
-  const match = line.match(timestampRegex)
-  return match ? match[0] : null
-}
-
-// Function to extract log content after timestamp
-const extractLogContent = (line: string): string => {
-  const timestampRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+/
-  return line.replace(timestampRegex, '')
-}
+// Using utility functions for timestamp extraction
+// (extractTimestamp and extractLogContent imported from utils)
 
 // Search functionality
 function setLineRef(index: number, el: Element | null): void {
@@ -182,69 +171,33 @@ function setLineRef(index: number, el: Element | null): void {
 }
 
 function updateSearchMatches(): void {
-  searchMatches.value = []
-  currentMatchIndex.value = 0
-  
-  if (!searchQuery.value.trim()) return
-  
-  const query = searchQuery.value.toLowerCase()
-  
-  props.logLines.forEach((line, lineIndex) => {
-    const searchText = extractTimestamp(line) ? extractLogContent(line) : line
-    const lowerLine = searchText.toLowerCase()
-    let matchIndex = 0
-    let startIndex = 0
-    
-    while ((startIndex = lowerLine.indexOf(query, startIndex)) !== -1) {
-      searchMatches.value.push({ lineIndex, matchIndex })
-      startIndex += query.length
-      matchIndex++
-    }
-  })
+  searchManager.updateSearchMatches(props.logLines, searchQuery.value)
 }
 
 function highlightSearchInText(text: string, lineIndex: number): string {
-  if (!searchQuery.value.trim()) return escapeHtml(text)
-  
-  const query = searchQuery.value
-  const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi')
-  const currentMatch = searchMatches.value[currentMatchIndex.value]
-  
-  let matchIndex = 0
-  return escapeHtml(text).replace(regex, (match) => {
-    const isCurrentMatch = currentMatch && 
-      currentMatch.lineIndex === lineIndex && 
-      currentMatch.matchIndex === matchIndex
-    matchIndex++
-    return isCurrentMatch 
-      ? `<span style="background-color: #fbbf24; color: #000; font-weight: bold; padding: 0 2px; border-radius: 2px;">${match}</span>`
-      : `<span style="background-color: #f59e0b; color: #000; padding: 0 2px; border-radius: 2px;">${match}</span>`
-  })
+  return searchManager.highlightSearchInText(text, lineIndex, searchQuery.value)
 }
 
 function isMatchingLine(lineIndex: number): boolean {
-  if (!searchQuery.value.trim()) return false
-  return searchMatches.value.some(match => match.lineIndex === lineIndex)
+  return searchManager.isMatchingLine(lineIndex)
 }
 
 function searchNext(): void {
-  if (searchMatches.value.length === 0) return
+  if (!searchManager.hasMatches) return
   
-  currentMatchIndex.value = (currentMatchIndex.value + 1) % searchMatches.value.length
+  searchManager.nextMatch()
   scrollToCurrentMatch()
 }
 
 function searchPrevious(): void {
-  if (searchMatches.value.length === 0) return
+  if (!searchManager.hasMatches) return
   
-  currentMatchIndex.value = currentMatchIndex.value === 0 
-    ? searchMatches.value.length - 1 
-    : currentMatchIndex.value - 1
+  searchManager.previousMatch()
   scrollToCurrentMatch()
 }
 
 function scrollToCurrentMatch(): void {
-  const currentMatch = searchMatches.value[currentMatchIndex.value]
+  const currentMatch = searchManager.getCurrentMatch()
   if (!currentMatch) return
   
   const lineElement = lineRefs.value.get(currentMatch.lineIndex)
@@ -258,19 +211,11 @@ function scrollToCurrentMatch(): void {
 
 function clearSearch(): void {
   searchQuery.value = ''
-  searchMatches.value = []
-  currentMatchIndex.value = 0
+  searchManager.clearMatches()
 }
 
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
-}
-
-function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+// Utility functions moved to logUtils
+// (escapeHtml and escapeRegExp now in LogSearchManager)
 
 // Watch for search query changes
 watch(searchQuery, () => {

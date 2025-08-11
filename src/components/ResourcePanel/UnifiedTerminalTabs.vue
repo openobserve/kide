@@ -32,8 +32,8 @@
             class="flex items-center min-w-0 border-r border-gray-200 dark:border-gray-600 group"
             :class="[
               activeTabId === tab.id 
-                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100' 
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                ? TAB_STYLES.active
+                : TAB_STYLES.inactive
             ]"
           >
             <button
@@ -59,19 +59,19 @@
                 class="w-2 h-2 rounded-full mr-2 flex-shrink-0"
                 :class="[
                   tab.isConnected 
-                    ? 'bg-green-500 animate-pulse' 
+                    ? CONNECTION_STATUS.connected
                     : tab.isConnecting 
-                      ? 'bg-yellow-500 animate-pulse' 
-                      : 'bg-gray-400'
+                      ? CONNECTION_STATUS.connecting
+                      : CONNECTION_STATUS.disconnected
                 ]"
               ></div>
               
               <!-- Live logging indicator for logs -->
               <div 
                 v-else-if="tab.type === 'logs' && tab.isLiveLogging"
-                class="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0 animate-pulse"
+                :class="`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${CONNECTION_STATUS.connected}`"
               ></div>
-              <div v-else-if="tab.type === 'logs'" class="w-2 h-2 bg-gray-400 rounded-full mr-2 flex-shrink-0"></div>
+              <div v-else-if="tab.type === 'logs'" :class="`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${CONNECTION_STATUS.disconnected}`"></div>
               
               <!-- Tab label with container dropdown for shell tabs -->
               <div v-if="tab.type === 'shell'" class="flex items-center space-x-1 min-w-0">
@@ -225,6 +225,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import KideTerminal from './KideTerminal.vue'
 import ResourceLogs from './ResourceLogs.vue'
+import { generateTabId, getTabTooltip } from '@/utils/tabUtils'
+import { TAB_STYLES, CONNECTION_STATUS } from '@/constants/ui'
 
 interface TerminalTab {
   id: string
@@ -286,7 +288,7 @@ function addShellTab(podData: {
   }
   
   // Create new shell tab
-  const tabId = `shell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+  const tabId = generateTabId('shell')
   const newTab: TerminalTab = {
     id: tabId,
     type: 'shell',
@@ -333,7 +335,7 @@ function addLogTab(podData: {
   }
   
   // Create new log tab
-  const tabId = `logs-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+  const tabId = generateTabId('logs')
   const newTab: TerminalTab = {
     id: tabId,
     type: 'logs',
@@ -480,9 +482,8 @@ function closeAllTabs(): void {
   activeTabId.value = null
 }
 
-function getTabTooltip(tab: TerminalTab): string {
-  return `${tab.type.charAt(0).toUpperCase() + tab.type.slice(1)}: ${tab.podName}`
-}
+// Using utility function for tooltip
+// (getTabTooltip imported from utils)
 
 // Resize functionality
 function startResize(event: MouseEvent): void {
