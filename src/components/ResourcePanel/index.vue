@@ -3,7 +3,7 @@
   <div 
     v-if="isOpen"
     @click="handleOverlayClick" 
-    class="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+    class="fixed inset-0 bg-black/50 z-40 transition-opacity"
   ></div>
 
   <!-- Panel -->
