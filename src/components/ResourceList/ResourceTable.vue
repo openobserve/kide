@@ -92,10 +92,27 @@
       </tbody>
     </table>
   </div>
+  
+  <!-- Shadcn-style tooltip -->
+  <Teleport to="body">
+    <div
+      v-if="tooltipState.show"
+      class="fixed z-[9999] px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-700 rounded border shadow-lg pointer-events-none"
+      :style="{
+        left: tooltipState.x + 'px',
+        top: tooltipState.y + 'px',
+        transform: 'translateY(-50%)'
+      }"
+    >
+      <div v-for="(line, index) in tooltipState.content" :key="index" class="whitespace-nowrap" :class="{ 'font-medium': index === 0, 'text-gray-300': index > 0 }">
+        {{ line }}
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, h } from 'vue'
+import { computed, ref, h, Teleport } from 'vue'
 import {
   getCoreRowModel,
   getSortedRowModel,
@@ -149,6 +166,14 @@ const sorting = ref<SortingState>([])
 const columnSizing = ref<Record<string, number>>({})
 const columnResizeMode = ref<ColumnResizeMode>('onChange')
 
+// Tooltip state
+const tooltipState = ref({
+  show: false,
+  content: [] as string[],
+  x: 0,
+  y: 0
+})
+
 // Load column sizes from localStorage
 const storageKey = computed(() => `kide-column-sizes-${props.resource?.kind || 'unknown'}`)
 
@@ -167,6 +192,21 @@ function saveColumnSizes(columnSizing: Record<string, number>) {
   } catch (error) {
     console.warn('Failed to save column sizes:', error)
   }
+}
+
+// Tooltip functions
+function showTooltip(event: MouseEvent, content: string[]) {
+  const rect = (event.target as HTMLElement).getBoundingClientRect()
+  tooltipState.value = {
+    show: true,
+    content,
+    x: rect.right + 8,
+    y: rect.top + rect.height / 2
+  }
+}
+
+function hideTooltip() {
+  tooltipState.value.show = false
 }
 
 
@@ -1148,22 +1188,22 @@ function createContainersCell(item: K8sListItem) {
         initContainerStatuses.map((container: any, index: number) =>
           h('div', {
             key: `init-${index}`,
-            class: 'relative group'
-          }, [
-            h('div', {
-              class: [
-                'w-2.5 h-2.5 rounded-sm border border-gray-400 cursor-help',
-                props.getContainerStatusColor(container)
+            onMouseenter: (e: MouseEvent) => {
+              const lines = [
+                `Init: ${container.name || 'Unknown'}`,
+                `Status: ${props.getContainerStatusText(container) || 'Unknown'}`
               ]
-            }),
-            // Tooltip
-            h('div', {
-              class: 'absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-50'
-            }, [
-              h('div', { class: 'font-medium' }, `Init: ${container.name}`),
-              h('div', { class: 'text-gray-300' }, props.getContainerStatusText(container))
-            ])
-          ])
+              if (container.state?.running?.startedAt) {
+                lines.push(`Started: ${props.getAge(container.state.running.startedAt)} ago`)
+              }
+              showTooltip(e, lines)
+            },
+            onMouseleave: hideTooltip,
+            class: [
+              'w-2.5 h-2.5 rounded-full border border-gray-400 cursor-pointer',
+              props.getContainerStatusColor(container)
+            ]
+          })
         )
       )
     ] : []),
@@ -1172,22 +1212,22 @@ function createContainersCell(item: K8sListItem) {
       containerStatuses.map((container: any, index: number) =>
         h('div', {
           key: `container-${index}`,
-          class: 'relative group'
-        }, [
-          h('div', {
-            class: [
-              'w-2.5 h-2.5 rounded-sm border border-gray-400 cursor-help',
-              props.getContainerStatusColor(container)
+          onMouseenter: (e: MouseEvent) => {
+            const lines = [
+              container.name || 'Unknown',
+              `Status: ${props.getContainerStatusText(container) || 'Unknown'}`
             ]
-          }),
-          // Tooltip
-          h('div', {
-            class: 'absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-50'
-          }, [
-            h('div', { class: 'font-medium' }, container.name),
-            h('div', { class: 'text-gray-300' }, props.getContainerStatusText(container))
-          ])
-        ])
+            if (container.state?.running?.startedAt) {
+              lines.push(`Started: ${props.getAge(container.state.running.startedAt)} ago`)
+            }
+            showTooltip(e, lines)
+          },
+          onMouseleave: hideTooltip,
+          class: [
+            'w-2.5 h-2.5 border border-gray-400 cursor-pointer',
+            props.getContainerStatusColor(container)
+          ]
+        })
       )
     )
   ])
