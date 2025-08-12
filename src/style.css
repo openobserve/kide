@@ -13,7 +13,7 @@
   --color-surface-tertiary: #374151;      /* Gray-700 for higher elevation */
   
   --color-text-primary: #ffffff;          /* Pure white for primary text */
-  --color-text-secondary: #9ca3af;        /* Gray-400 for secondary text - original readability */
+  --color-text-secondary: #d1d5db;        /* Gray-300 for secondary text - slightly whiter */
   --color-text-tertiary: #e5e7eb;         /* Gray-200 for tertiary text */
   --color-text-muted: #d1d5db;            /* Gray-300 for muted text */
   
