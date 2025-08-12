@@ -1594,8 +1594,8 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver' || props.resource?.kind === 'StorageClass' || props.resource?.kind === 'PriorityClass' || props.resource?.kind === 'ServiceAccount' || props.resource?.kind === 'Role' || props.resource?.kind === 'ClusterRole' || props.resource?.kind === 'RoleBinding') {
-    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, CSIDrivers, StorageClasses, PriorityClasses, ServiceAccounts, Roles, ClusterRoles, and RoleBindings have their own custom columns or no Status column needed
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver' || props.resource?.kind === 'StorageClass' || props.resource?.kind === 'PriorityClass' || props.resource?.kind === 'ServiceAccount' || props.resource?.kind === 'Role' || props.resource?.kind === 'ClusterRole' || props.resource?.kind === 'RoleBinding' || props.resource?.kind === 'ClusterRoleBinding' || props.resource?.kind === 'CustomResourceDefinition' || props.resource?.kind === 'APIService') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, CSIDrivers, StorageClasses, PriorityClasses, ServiceAccounts, Roles, ClusterRoles, RoleBindings, ClusterRoleBindings, CustomResourceDefinitions, and APIServices have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns
     baseColumns.push(

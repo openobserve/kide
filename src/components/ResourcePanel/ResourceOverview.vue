@@ -929,6 +929,75 @@
       </div>
     </div>
 
+    <!-- ClusterRoleBinding Subjects -->
+    <div v-if="resourceKind === 'ClusterRoleBinding' && (resourceData?.clusterRoleBindingSpec?.subjects || resourceData?.completeObject?.subjects)" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
+        Subjects
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.clusterRoleBindingSpec?.subjects || resourceData?.completeObject?.subjects || []).length }})</span>
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-background">
+          <thead class="table-header-background border-b border-border-primary">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Kind</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Name</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Namespace</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">API Group</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="table-background divide-y divide-border-primary">
+            <tr v-for="(subject, index) in (resourceData?.clusterRoleBindingSpec?.subjects || resourceData?.completeObject?.subjects || [])" 
+                :key="index"
+                class="table-row-background">
+              <!-- Kind -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span class="status-badge status-badge-info">
+                  {{ subject.kind }}
+                </span>
+              </td>
+              
+              <!-- Name -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span class="text-sm table-cell-text font-mono">
+                  {{ subject.name }}
+                </span>
+              </td>
+              
+              <!-- Namespace -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span v-if="subject.namespace" class="status-badge status-badge-yellow">
+                  {{ subject.namespace }}
+                </span>
+                <span v-else class="text-text-muted text-xs">-</span>
+              </td>
+              
+              <!-- API Group -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span v-if="subject.apiGroup" class="status-badge status-badge-secondary">
+                  {{ subject.apiGroup }}
+                </span>
+                <span v-else class="text-text-muted text-xs">-</span>
+              </td>
+              
+              <!-- Actions -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <button
+                  @click="copyClusterRoleBindingSubject(subject)"
+                  class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  :title="`Copy subject ${index + 1}`"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 002 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="elevated-surface rounded-lg p-4">
       <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Status</h3>
@@ -1489,6 +1558,26 @@ async function copyRoleBindingSubject(subject: any): Promise<void> {
     await navigator.clipboard.writeText(subjectText)
   } catch (error) {
     console.error('Failed to copy RoleBinding subject:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    const kind = subject.kind || 'N/A'
+    const name = subject.name || 'N/A'
+    const namespace = subject.namespace ? `, Namespace: ${subject.namespace}` : ''
+    const apiGroup = subject.apiGroup ? `, API Group: ${subject.apiGroup}` : ''
+    textArea.value = `Kind: ${kind}, Name: ${name}${namespace}${apiGroup}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyClusterRoleBindingSubject(subject: any): Promise<void> {
+  try {
+    const subjectText = `ClusterRoleBinding Subject: ${JSON.stringify(subject, null, 2)}`
+    await navigator.clipboard.writeText(subjectText)
+  } catch (error) {
+    console.error('Failed to copy ClusterRoleBinding subject:', error)
     // Fallback for older browsers
     const textArea = document.createElement('textarea')
     const kind = subject.kind || 'N/A'
