@@ -1301,8 +1301,46 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret') {
-    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, and Secrets have their own custom columns or no Status column needed
+  } else if (props.resource?.kind === 'Namespace') {
+    // Add Namespace-specific columns
+    baseColumns.push(
+      {
+        id: 'labels',
+        header: 'Labels',
+        accessorFn: (row) => {
+          const labels = row.metadata?.labels
+          if (!labels || Object.keys(labels).length === 0) return 0
+          return Object.keys(labels).length
+        },
+        cell: ({ row }) => {
+          const labels = row.original.metadata?.labels
+          if (!labels || Object.keys(labels).length === 0) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          
+          const labelCount = Object.keys(labels).length
+          const labelText = Object.entries(labels)
+            .slice(0, 2)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(', ')
+          
+          const displayText = labelCount > 2 
+            ? `${labelText} +${labelCount - 2}`
+            : labelText
+          
+          return h('div', {
+            class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+            title: `Labels (${labelCount}): ${Object.entries(labels).map(([k, v]) => `${k}=${v}`).join(', ')}`
+          }, displayText)
+        },
+        size: savedSizes.labels || 200,
+        minSize: 150,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, and CSIDrivers have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns
     baseColumns.push(
