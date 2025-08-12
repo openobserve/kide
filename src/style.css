@@ -83,7 +83,7 @@
 }
 
 .table-header-background {
-  @apply bg-surface-primary;
+  @apply bg-surface-tertiary;
 }
 
 .table-header-text {
