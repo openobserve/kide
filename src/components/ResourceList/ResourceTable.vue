@@ -209,6 +209,34 @@ function hideTooltip() {
   tooltipState.value.show = false
 }
 
+// Exit code meanings lookup table
+const EXIT_CODE_MEANINGS = {
+  "0": "Success/Normal termination",
+  "1": "Unknown error/Application error or invalid image reference/General error (catch-all)",
+  "2": "Test failures occurred/Misuse of shell built-ins or syntax errors",
+  "3": "Test session aborted (e.g., via Ctrl-C)",
+  "4": "Invalid testing extension setup",
+  "5": "Invalid command-line arguments",
+  "6": "Feature not implemented",
+  "7": "Test session crashed or couldn't complete",
+  "8": "Ran zero tests",
+  "9": "Violated minimum execution policy",
+  "10": "Test adapter or infrastructure failure",
+  "11": "Dependent process exit triggered shutdown",
+  "12": "Protocol version not supported by client",
+  "13": "Exceeded maximum failed tests",
+  "125": "Container failed to run (couldn't start)",
+  "126": "Command specified in container not executable/Command found but not executable",
+  "127": "Command not found in container/Command not found",
+  "128": "Invalid argument to exit/Invalid exit argument",
+  "130": "Script terminated by Ctrl-C (SIGINT)",
+  "134": "Abnormal termination: SIGABRT (abort)",
+  "137": "Immediate termination: SIGKILL (often OOMKilled)",
+  "139": "Segmentation fault (SIGSEGV)",
+  "143": "Graceful termination via SIGTERM",
+  "255": "Exit status out-of-range or unknown/Exit status out of range"
+}
+
 // Generate enhanced tooltip content for containers
 function getContainerTooltipLines(container: any, isInit = false): string[] {
   const lines = []
@@ -231,9 +259,21 @@ function getContainerTooltipLines(container: any, isInit = false): string[] {
   } else if (container.state?.terminated) {
     const terminated = container.state.terminated
     
-    // Exit code
+    // Exit code with reason
     if (terminated.exitCode !== undefined) {
-      lines.push(`Exit Code: ${terminated.exitCode}`)
+      const exitCode = terminated.exitCode.toString()
+      const exitReason = EXIT_CODE_MEANINGS[exitCode as keyof typeof EXIT_CODE_MEANINGS]
+      if (exitReason) {
+        lines.push(`Exit Code: ${terminated.exitCode} - ${exitReason}`)
+      } else {
+        // Check for signal-based exit codes (128+N pattern)
+        const signalNum = terminated.exitCode - 128
+        if (terminated.exitCode > 128 && signalNum > 0) {
+          lines.push(`Exit Code: ${terminated.exitCode} - Process terminated by signal ${signalNum}`)
+        } else {
+          lines.push(`Exit Code: ${terminated.exitCode}`)
+        }
+      }
     }
     
     // Reason
