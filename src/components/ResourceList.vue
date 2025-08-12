@@ -431,9 +431,17 @@ function closeResourcePanel(): void {
 }
 
 function handleViewPod(pod: any): void {
+  // Normalize pod data structure to match what useResourceStatus expects
+  const normalizedPod = {
+    ...pod,
+    kind: 'Pod',
+    // Map standard Kubernetes fields to the expected format
+    podStatus: pod.status,
+    podSpec: pod.spec
+  }
   
   // Store external pod data and show it in the resource panel
-  externalResourceData.value = pod
+  externalResourceData.value = normalizedPod
   selectedResourceId.value = pod.metadata?.uid || null
   isResourcePanelOpen.value = true
 }
