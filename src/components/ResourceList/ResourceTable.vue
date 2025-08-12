@@ -1356,6 +1356,54 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         minSize: 150,
         enableSorting: true,
         enableResizing: true
+      },
+      {
+        id: 'finalizers',
+        header: 'Finalizers',
+        accessorFn: (row) => {
+          const finalizers = getGenericSpec(row)?.finalizers
+          if (!finalizers || finalizers.length === 0) return 0
+          return finalizers.length
+        },
+        cell: ({ row }) => {
+          const finalizers = getGenericSpec(row.original)?.finalizers
+          if (!finalizers || finalizers.length === 0) {
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
+          }
+          
+          const finalizerCount = finalizers.length
+          const displayText = finalizerCount === 1 
+            ? finalizers[0]
+            : `${finalizerCount} finalizers`
+          
+          return h('div', {
+            class: 'text-xs table-cell-text truncate max-w-full',
+            title: `Finalizers (${finalizerCount}): ${finalizers.join(', ')}`
+          }, displayText)
+        },
+        size: savedSizes.finalizers || 150,
+        minSize: 120,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        accessorFn: (row) => getGenericStatus(row)?.phase || 'Unknown',
+        cell: ({ row }) => {
+          const status = getGenericStatus(row.original)?.phase || 'Unknown'
+          const statusClass = getStatusClass(row.original)
+          return h('span', {
+            class: [
+              'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium',
+              statusClass
+            ]
+          }, status)
+        },
+        size: savedSizes.status || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
       }
     )
   } else if (props.resource?.kind === 'Node') {
@@ -1546,8 +1594,8 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver') {
-    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, and CSIDrivers have their own custom columns or no Status column needed
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver' || props.resource?.kind === 'StorageClass') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, CSIDrivers, and StorageClasses have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns
     baseColumns.push(
