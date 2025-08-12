@@ -591,10 +591,26 @@
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
         Capacity
         <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).capacity).length }} resources)</span>
+        <Tooltip content="Total node resources available, including system reserved resources" side="top">
+          <span class="ml-1 inline-flex items-center">
+            <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+            </svg>
+          </span>
+        </Tooltip>
       </h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div v-for="(value, key) in getGenericStatus(resourceData).capacity" :key="key">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ key }}</dt>
+          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {{ key }}
+            <Tooltip v-if="key.startsWith('hugepages-')" :content="`Large memory pages (${key.split('-')[1]}) that reduce TLB misses and improve memory performance for memory-intensive applications`" side="top">
+              <span class="ml-1 inline-flex items-center">
+                <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                </svg>
+              </span>
+            </Tooltip>
+          </dt>
           <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
             <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
             <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
@@ -609,10 +625,26 @@
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
         Allocatable
         <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).allocatable).length }} resources)</span>
+        <Tooltip content="Resources available for scheduling pods after system reservations (kubelet, kube-proxy, OS, etc.)" side="top">
+          <span class="ml-1 inline-flex items-center">
+            <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+            </svg>
+          </span>
+        </Tooltip>
       </h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div v-for="(value, key) in getGenericStatus(resourceData).allocatable" :key="key">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ key }}</dt>
+          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {{ key }}
+            <Tooltip v-if="key.startsWith('hugepages-')" :content="`Large memory pages (${key.split('-')[1]}) that reduce TLB misses and improve memory performance for memory-intensive applications`" side="top">
+              <span class="ml-1 inline-flex items-center">
+                <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                </svg>
+              </span>
+            </Tooltip>
+          </dt>
           <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
             <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
             <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
@@ -757,6 +789,7 @@ import PodConditions from './PodConditions.vue'
 import PodVolumes from './PodVolumes.vue'
 import ServiceConfiguration from './ServiceConfiguration.vue'
 import WorkloadConfiguration from './WorkloadConfiguration.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 
 interface Props {
   resourceData: any | null

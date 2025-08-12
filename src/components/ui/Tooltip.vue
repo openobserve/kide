@@ -1,5 +1,10 @@
 <template>
-  <div class="relative inline-block group">
+  <div 
+    ref="triggerRef"
+    class="relative inline-block group"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+  >
     <!-- Trigger slot -->
     <slot />
     
@@ -84,21 +89,11 @@ const handleMouseLeave = () => {
 }
 
 onMounted(() => {
-  const element = document.currentScript?.parentElement?.previousElementSibling as HTMLElement
-  if (!element) return
-  
-  triggerRef.value = element
-  element.addEventListener('mouseenter', handleMouseEnter)
-  element.addEventListener('mouseleave', handleMouseLeave)
   window.addEventListener('scroll', updatePosition)
   window.addEventListener('resize', updatePosition)
 })
 
 onBeforeUnmount(() => {
-  if (triggerRef.value) {
-    triggerRef.value.removeEventListener('mouseenter', handleMouseEnter)
-    triggerRef.value.removeEventListener('mouseleave', handleMouseLeave)
-  }
   window.removeEventListener('scroll', updatePosition)
   window.removeEventListener('resize', updatePosition)
 })

@@ -125,3 +125,18 @@ html.dark .dark\:hover\:text-gray-200:hover {
 html.dark .dark\:hover\:text-blue-300:hover {
   color: #93c5fd !important;
 }
+
+/* Remove tooltip delay for immediate display */
+[title] {
+  --tooltip-delay: 0ms !important;
+}
+
+/* Browser-specific tooltip delay removal */
+[title]:hover::after {
+  animation-delay: 0s !important;
+}
+
+/* Alternative approach for webkit browsers */
+[title]::-webkit-tooltip {
+  animation-delay: 0s !important;
+}
