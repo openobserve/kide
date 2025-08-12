@@ -550,6 +550,142 @@
       </div>
     </div>
 
+    <!-- Node Addresses -->
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.addresses?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        Addresses
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).addresses.length }})</span>
+      </h3>
+      <div class="space-y-2">
+        <div v-for="(address, index) in getGenericStatus(resourceData).addresses" :key="index"
+             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                  {{ address.type }}
+                </span>
+              </div>
+              <div class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+                {{ address.address }}
+              </div>
+            </div>
+            
+            <!-- Copy button -->
+            <button
+              @click="copyToClipboard(address.address)"
+              class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="`Copy ${address.type} address`"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Node Capacity -->
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.capacity" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        Capacity
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).capacity).length }} resources)</span>
+      </h3>
+      <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div v-for="(value, key) in getGenericStatus(resourceData).capacity" :key="key">
+          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ key }}</dt>
+          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+            <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
+            <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
+            <span v-else>{{ value }}</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Node Allocatable -->
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.allocatable" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        Allocatable
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).allocatable).length }} resources)</span>
+      </h3>
+      <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div v-for="(value, key) in getGenericStatus(resourceData).allocatable" :key="key">
+          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ key }}</dt>
+          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+            <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
+            <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
+            <span v-else>{{ value }}</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Node Conditions -->
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.conditions?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        Conditions
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
+      </h3>
+      <div class="space-y-2">
+        <div v-for="(condition, index) in getGenericStatus(resourceData).conditions" :key="index"
+             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span :class="[
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                  condition.status === 'True' 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    : condition.status === 'False' 
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                ]">
+                  {{ condition.type }}
+                </span>
+                <span :class="[
+                  'text-xs px-1.5 py-0.5 rounded',
+                  condition.status === 'True' 
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    : condition.status === 'False' 
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+                ]">
+                  {{ condition.status }}
+                </span>
+                <span v-if="condition.lastTransitionTime" class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ getRelativeTime(new Date().getTime() - new Date(condition.lastTransitionTime).getTime()) }} ago
+                </span>
+              </div>
+              <div class="text-xs space-y-1">
+                <div v-if="condition.reason" class="text-gray-600 dark:text-gray-400">
+                  <span class="font-medium">Reason:</span> {{ condition.reason }}
+                </div>
+                <div v-if="condition.message" class="text-gray-600 dark:text-gray-400">
+                  <span class="font-medium">Message:</span> {{ condition.message }}
+                </div>
+                <div v-if="condition.lastHeartbeatTime" class="text-gray-500 dark:text-gray-500">
+                  <span class="font-medium">Last Heartbeat:</span> {{ new Date(condition.lastHeartbeatTime).toLocaleString() }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Copy button -->
+            <button
+              @click="copyNodeCondition(condition)"
+              class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="`Copy condition ${condition.type}`"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">CronJob Status</h3>
@@ -935,6 +1071,38 @@ function getPodReplacementPolicyClass(policy: string): string {
   }
 }
 
+// Helper function to convert memory to appropriate binary units (Mi, Gi, Ti)
+function formatMemory(memory: string): string {
+  const match = memory.match(/^(\d+)(.*)$/)
+  if (!match) return memory
+  
+  const value = parseInt(match[1])
+  const unit = match[2]
+  
+  // Convert to bytes first
+  let bytes = value
+  switch (unit) {
+    case 'Ki': bytes = value * 1024; break
+    case 'Mi': bytes = value * 1024 * 1024; break
+    case 'Gi': bytes = value * 1024 * 1024 * 1024; break
+    case 'Ti': bytes = value * 1024 * 1024 * 1024 * 1024; break
+    default: bytes = value; break
+  }
+  
+  // Convert to appropriate unit based on 1024 boundaries
+  if (bytes >= 1024 * 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)}Ti`
+  } else if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}Gi`
+  } else if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)}Mi`
+  } else if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(1)}Ki`
+  } else {
+    return `${bytes}B`
+  }
+}
+
 async function copyJobCondition(condition: any): Promise<void> {
   try {
     const conditionText = `Job Condition: ${JSON.stringify(condition, null, 2)}`
@@ -979,6 +1147,22 @@ async function copyPDBCondition(condition: any): Promise<void> {
     await navigator.clipboard.writeText(conditionText)
   } catch (error) {
     console.error('Failed to copy PDB condition:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = `Type: ${condition.type}, Status: ${condition.status}, Reason: ${condition.reason || 'N/A'}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyNodeCondition(condition: any): Promise<void> {
+  try {
+    const conditionText = `Node Condition: ${JSON.stringify(condition, null, 2)}`
+    await navigator.clipboard.writeText(conditionText)
+  } catch (error) {
+    console.error('Failed to copy Node condition:', error)
     // Fallback for older browsers
     const textArea = document.createElement('textarea')
     textArea.value = `Type: ${condition.type}, Status: ${condition.status}, Reason: ${condition.reason || 'N/A'}`

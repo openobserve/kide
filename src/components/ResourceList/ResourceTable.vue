@@ -1339,6 +1339,194 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
+  } else if (props.resource?.kind === 'Node') {
+    // Add Node-specific columns
+    baseColumns.push(
+      {
+        id: 'cpu',
+        header: 'CPU',
+        accessorFn: (row) => getGenericStatus(row)?.capacity?.cpu || '0',
+        cell: ({ row }) => {
+          const cpu = getGenericStatus(row.original)?.capacity?.cpu
+          if (!cpu) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, cpu)
+        },
+        size: savedSizes.cpu || 80,
+        minSize: 60,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'memory',
+        header: 'Memory',
+        accessorFn: (row) => {
+          const memory = getGenericStatus(row)?.capacity?.memory
+          if (!memory) return 0
+          // Convert memory to bytes for sorting
+          const match = memory.match(/^(\d+)(.*)$/)
+          if (match) {
+            const value = parseInt(match[1])
+            const unit = match[2]
+            switch (unit) {
+              case 'Ki': return value * 1024
+              case 'Mi': return value * 1024 * 1024
+              case 'Gi': return value * 1024 * 1024 * 1024
+              case 'Ti': return value * 1024 * 1024 * 1024 * 1024
+              default: return value
+            }
+          }
+          return 0
+        },
+        cell: ({ row }) => {
+          const memory = getGenericStatus(row.original)?.capacity?.memory
+          if (!memory) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          const formattedMemory = formatMemory(memory)
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, formattedMemory)
+        },
+        size: savedSizes.memory || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'allocatable-cpu',
+        header: 'Allocatable CPU',
+        accessorFn: (row) => getGenericStatus(row)?.allocatable?.cpu || '0',
+        cell: ({ row }) => {
+          const allocatableCpu = getGenericStatus(row.original)?.allocatable?.cpu
+          if (!allocatableCpu) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, allocatableCpu)
+        },
+        size: savedSizes['allocatable-cpu'] || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'allocatable-memory',
+        header: 'Allocatable Memory',
+        accessorFn: (row) => {
+          const memory = getGenericStatus(row)?.allocatable?.memory
+          if (!memory) return 0
+          // Convert memory to bytes for sorting
+          const match = memory.match(/^(\d+)(.*)$/)
+          if (match) {
+            const value = parseInt(match[1])
+            const unit = match[2]
+            switch (unit) {
+              case 'Ki': return value * 1024
+              case 'Mi': return value * 1024 * 1024
+              case 'Gi': return value * 1024 * 1024 * 1024
+              case 'Ti': return value * 1024 * 1024 * 1024 * 1024
+              default: return value
+            }
+          }
+          return 0
+        },
+        cell: ({ row }) => {
+          const memory = getGenericStatus(row.original)?.allocatable?.memory
+          if (!memory) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          const formattedMemory = formatMemory(memory)
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, formattedMemory)
+        },
+        size: savedSizes['allocatable-memory'] || 120,
+        minSize: 100,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'allocatable-pods',
+        header: 'Allocatable Pods',
+        accessorFn: (row) => {
+          const pods = getGenericStatus(row)?.allocatable?.pods
+          return pods ? parseInt(pods) : 0
+        },
+        cell: ({ row }) => {
+          const pods = getGenericStatus(row.original)?.allocatable?.pods
+          if (!pods) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, pods)
+        },
+        size: savedSizes['allocatable-pods'] || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'architecture',
+        header: 'Architecture',
+        accessorFn: (row) => getGenericStatus(row)?.nodeInfo?.architecture || 'unknown',
+        cell: ({ row }) => {
+          const architecture = getGenericStatus(row.original)?.nodeInfo?.architecture
+          if (!architecture) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400'
+          }, architecture)
+        },
+        size: savedSizes.architecture || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'osImage',
+        header: 'OS Image',
+        accessorFn: (row) => getGenericStatus(row)?.nodeInfo?.osImage || 'unknown',
+        cell: ({ row }) => {
+          const osImage = getGenericStatus(row.original)?.nodeInfo?.osImage
+          if (!osImage) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 truncate',
+            title: osImage
+          }, osImage)
+        },
+        size: savedSizes.osImage || 180,
+        minSize: 120,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'kubeletVersion',
+        header: 'Kubelet Version',
+        accessorFn: (row) => getGenericStatus(row)?.nodeInfo?.kubeletVersion || 'unknown',
+        cell: ({ row }) => {
+          const kubeletVersion = getGenericStatus(row.original)?.nodeInfo?.kubeletVersion
+          if (!kubeletVersion) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, kubeletVersion)
+        },
+        size: savedSizes.kubeletVersion || 120,
+        minSize: 100,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
   } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver') {
     // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, and CSIDrivers have their own custom columns or no Status column needed
   } else {
@@ -1400,6 +1588,38 @@ function getJobDuration(durationMs: number): string {
   if (hours > 0) return `${hours}h ${minutes % 60}m`
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`
   return `${seconds}s`
+}
+
+// Helper function to convert memory to appropriate binary units (Mi, Gi, Ti)
+function formatMemory(memory: string): string {
+  const match = memory.match(/^(\d+)(.*)$/)
+  if (!match) return memory
+  
+  const value = parseInt(match[1])
+  const unit = match[2]
+  
+  // Convert to bytes first
+  let bytes = value
+  switch (unit) {
+    case 'Ki': bytes = value * 1024; break
+    case 'Mi': bytes = value * 1024 * 1024; break
+    case 'Gi': bytes = value * 1024 * 1024 * 1024; break
+    case 'Ti': bytes = value * 1024 * 1024 * 1024 * 1024; break
+    default: bytes = value; break
+  }
+  
+  // Convert to appropriate unit based on 1024 boundaries
+  if (bytes >= 1024 * 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)}Ti`
+  } else if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}Gi`
+  } else if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)}Mi`
+  } else if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(1)}Ki`
+  } else {
+    return `${bytes}B`
+  }
 }
 
 function createHoverButtons(item: K8sListItem) {

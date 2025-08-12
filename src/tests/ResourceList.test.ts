@@ -151,22 +151,23 @@ describe('ResourceList Component', () => {
       expect(wrapper.text()).toContain('node-1')
     })
 
-    it('should display status information', () => {
-      // Status column restored for resources without custom columns
-      expect(wrapper.text()).toContain('Ready')
+    it('should display Node-specific columns', () => {
+      // Node resources now have custom columns instead of status column
+      expect(wrapper.text()).toContain('CPU')
+      expect(wrapper.text()).toContain('Memory')
+      expect(wrapper.text()).toContain('Architecture')
     })
 
-    it('should display Status column for resources without custom columns', () => {
-      // Verify Status column header is present
-      expect(wrapper.text()).toContain('Status')
-      
-      // Verify Status column shows readable status values
-      expect(wrapper.text()).toContain('Ready')
-      
-      // Verify both nodes show Ready status
-      const readyMatches = wrapper.text().match(/Ready/g)
-      expect(readyMatches).toBeTruthy()
-      expect(readyMatches!.length).toBeGreaterThanOrEqual(2) // At least 2 nodes with Ready status
+    it('should display Node hardware and system information', () => {
+      // Verify Node-specific column headers are present
+      expect(wrapper.text()).toContain('CPU')
+      expect(wrapper.text()).toContain('Memory')
+      expect(wrapper.text()).toContain('Allocatable CPU')
+      expect(wrapper.text()).toContain('Allocatable Memory')
+      expect(wrapper.text()).toContain('Allocatable Pods')
+      expect(wrapper.text()).toContain('Architecture')
+      expect(wrapper.text()).toContain('OS Image')
+      expect(wrapper.text()).toContain('Kubelet Version')
     })
 
     it('should display correct status for different resource types', () => {
@@ -492,9 +493,11 @@ describe('ResourceList Component', () => {
       expect(wrapper.vm.selectedItem).toBeNull()
     })
 
-    it('should show JSON status in side panel', async () => {
-      // Status column restored, check for Ready status
-      expect(wrapper.text()).toContain('Ready')
+    it('should show Node hardware information in table', async () => {
+      // Node resources now show custom columns instead of status
+      expect(wrapper.text()).toContain('CPU')
+      expect(wrapper.text()).toContain('Memory')
+      expect(wrapper.text()).toContain('Architecture')
     })
   })
 
