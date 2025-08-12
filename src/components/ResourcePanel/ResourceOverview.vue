@@ -789,6 +789,146 @@
       </div>
     </div>
 
+    <!-- ClusterRole Rules -->
+    <div v-if="resourceKind === 'ClusterRole' && (resourceData?.clusterRoleSpec?.rules || resourceData?.completeObject?.rules)" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
+        Rules
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.clusterRoleSpec?.rules || resourceData?.completeObject?.rules || []).length }})</span>
+      </h3>
+      <div class="space-y-3">
+        <div v-for="(rule, index) in (resourceData?.clusterRoleSpec?.rules || resourceData?.completeObject?.rules || [])" :key="index"
+             class="bg-surface-secondary rounded border border-border-primary p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <!-- API Groups -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">API Groups:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(apiGroup, apiIndex) in (rule.apiGroups || [''])" :key="apiIndex"
+                        class="status-badge status-badge-info">
+                    {{ apiGroup === '' ? 'core' : apiGroup }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Resources -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">Resources:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(resource, resIndex) in (rule.resources || [])" :key="resIndex"
+                        class="status-badge status-badge-success">
+                    {{ resource }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Resource Names (if specified) -->
+              <div v-if="rule.resourceNames?.length" class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">Resource Names:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(resourceName, nameIndex) in rule.resourceNames" :key="nameIndex"
+                        class="status-badge status-badge-yellow">
+                    {{ resourceName }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Verbs -->
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-text-secondary">Verbs:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(verb, verbIndex) in (rule.verbs || [])" :key="verbIndex"
+                        class="status-badge status-badge-secondary">
+                    {{ verb }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Copy button -->
+            <button
+              @click="copyClusterRoleRule(rule)"
+              class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="`Copy rule ${index + 1}`"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 002 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RoleBinding Subjects -->
+    <div v-if="resourceKind === 'RoleBinding' && (resourceData?.roleBindingSpec?.subjects || resourceData?.completeObject?.subjects)" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
+        Subjects
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.roleBindingSpec?.subjects || resourceData?.completeObject?.subjects || []).length }})</span>
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-background">
+          <thead class="table-header-background border-b border-border-primary">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Kind</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Name</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">Namespace</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider">API Group</th>
+              <th class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="table-background divide-y divide-border-primary">
+            <tr v-for="(subject, index) in (resourceData?.roleBindingSpec?.subjects || resourceData?.completeObject?.subjects || [])" 
+                :key="index"
+                class="table-row-background">
+              <!-- Kind -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span class="status-badge status-badge-info">
+                  {{ subject.kind }}
+                </span>
+              </td>
+              
+              <!-- Name -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span class="text-sm table-cell-text font-mono">
+                  {{ subject.name }}
+                </span>
+              </td>
+              
+              <!-- Namespace -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span v-if="subject.namespace" class="status-badge status-badge-yellow">
+                  {{ subject.namespace }}
+                </span>
+                <span v-else class="text-text-muted text-xs">-</span>
+              </td>
+              
+              <!-- API Group -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span v-if="subject.apiGroup" class="status-badge status-badge-secondary">
+                  {{ subject.apiGroup }}
+                </span>
+                <span v-else class="text-text-muted text-xs">-</span>
+              </td>
+              
+              <!-- Actions -->
+              <td class="px-3 py-2 whitespace-nowrap">
+                <button
+                  @click="copyRoleBindingSubject(subject)"
+                  class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  :title="`Copy subject ${index + 1}`"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 002 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="elevated-surface rounded-lg p-4">
       <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Status</h3>
@@ -1317,6 +1457,45 @@ async function copyRoleRule(rule: any): Promise<void> {
     const resources = rule.resources?.join(', ') || 'N/A'
     const verbs = rule.verbs?.join(', ') || 'N/A'
     textArea.value = `API Groups: ${apiGroups}, Resources: ${resources}, Verbs: ${verbs}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyClusterRoleRule(rule: any): Promise<void> {
+  try {
+    const ruleText = `ClusterRole Rule: ${JSON.stringify(rule, null, 2)}`
+    await navigator.clipboard.writeText(ruleText)
+  } catch (error) {
+    console.error('Failed to copy ClusterRole rule:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    const apiGroups = rule.apiGroups?.join(', ') || 'core'
+    const resources = rule.resources?.join(', ') || 'N/A'
+    const verbs = rule.verbs?.join(', ') || 'N/A'
+    textArea.value = `API Groups: ${apiGroups}, Resources: ${resources}, Verbs: ${verbs}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyRoleBindingSubject(subject: any): Promise<void> {
+  try {
+    const subjectText = `RoleBinding Subject: ${JSON.stringify(subject, null, 2)}`
+    await navigator.clipboard.writeText(subjectText)
+  } catch (error) {
+    console.error('Failed to copy RoleBinding subject:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    const kind = subject.kind || 'N/A'
+    const name = subject.name || 'N/A'
+    const namespace = subject.namespace ? `, Namespace: ${subject.namespace}` : ''
+    const apiGroup = subject.apiGroup ? `, API Group: ${subject.apiGroup}` : ''
+    textArea.value = `Kind: ${kind}, Name: ${name}${namespace}${apiGroup}`
     document.body.appendChild(textArea)
     textArea.select()
     document.execCommand('copy')
