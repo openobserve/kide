@@ -47,7 +47,7 @@ interface Props {
 const props = defineProps<Props>()
 
 // Helper functions for accessing resource-specific fields
-const { getGenericStatus, getGenericSpec } = useResourceStatus()
+const { getGenericStatus, getGenericSpec, getStatusText } = useResourceStatus()
 
 defineEmits<{
   close: []
@@ -61,7 +61,12 @@ function getResourceSubtitle(): string {
 }
 
 function getResourceStatus(): string {
-  if (!props.resourceData || !getGenericStatus(props.resourceData)) return 'Unknown'
+  if (!props.resourceData) return 'Unknown'
+  
+  // Use the centralized status logic for PersistentVolumeClaim and other resources
+  if (props.resourceKind === 'PersistentVolumeClaim' || props.resourceKind === 'PersistentVolume' || props.resourceKind === 'Namespace') {
+    return getStatusText(props.resourceData)
+  }
   
   // Pod status
   if (props.resourceKind === 'Pod' && getGenericStatus(props.resourceData)?.phase) {
@@ -81,7 +86,7 @@ function getResourceStatus(): string {
   }
   
   // Default status check
-  if (getGenericStatus(props.resourceData).conditions) {
+  if (getGenericStatus(props.resourceData)?.conditions) {
     const readyCondition = getGenericStatus(props.resourceData).conditions.find((c: any) => c.type === 'Ready')
     if (readyCondition) {
       return readyCondition.status === 'True' ? 'Ready' : 'Not Ready'
@@ -104,7 +109,7 @@ function getStatusColor(): string {
     }
   }
   
-  if (status.includes('Ready') || status === 'Active') {
+  if (status.includes('Ready') || status === 'Active' || status === 'Bound') {
     return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700'
   }
   
@@ -124,7 +129,7 @@ function getStatusDotColor(): string {
     }
   }
   
-  if (status.includes('Ready') || status === 'Active') {
+  if (status.includes('Ready') || status === 'Active' || status === 'Bound') {
     return 'bg-green-500'
   }
   

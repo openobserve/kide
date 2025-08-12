@@ -159,7 +159,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Import helper functions for accessing resource-specific fields
-const { getGenericStatus, getGenericSpec } = useResourceStatus()
+const { getGenericStatus, getGenericSpec, getStatusText, getStatusClass } = useResourceStatus()
 
 // State
 const sorting = ref<SortingState>([])
@@ -1266,6 +1266,25 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
   } else if (props.resource?.kind === 'PersistentVolumeClaim') {
     // Add PersistentVolumeClaim-specific columns
     baseColumns.push(
+      {
+        id: 'status',
+        header: 'Status',
+        accessorFn: (row) => getStatusText(row),
+        cell: ({ row }) => {
+          const status = getStatusText(row.original)
+          const statusClass = getStatusClass(row.original)
+          return h('span', {
+            class: [
+              'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium',
+              statusClass
+            ]
+          }, status)
+        },
+        size: savedSizes.status || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
       {
         id: 'capacity',
         header: 'Capacity',
