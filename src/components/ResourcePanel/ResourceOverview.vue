@@ -928,6 +928,34 @@ function getResourceSpecificFields(): Array<{key: string, label: string, value: 
     }
   }
   
+  if (props.resourceKind === 'PersistentVolumeClaim' && props.resourceData) {
+    // Capacity from status
+    if (getGenericStatus(props.resourceData)?.capacity?.storage) {
+      fields.push({ 
+        key: 'capacity', 
+        label: 'Capacity', 
+        value: getGenericStatus(props.resourceData).capacity.storage,
+        mono: true
+      })
+    }
+    
+    // Storage Class from spec
+    if (getGenericSpec(props.resourceData)?.storageClassName) {
+      fields.push({ 
+        key: 'storageClass', 
+        label: 'Storage Class', 
+        value: getGenericSpec(props.resourceData).storageClassName
+      })
+    } else {
+      // Show default storage class if none specified
+      fields.push({ 
+        key: 'storageClass', 
+        label: 'Storage Class', 
+        value: 'default'
+      })
+    }
+  }
+  
   return fields
 }
 
