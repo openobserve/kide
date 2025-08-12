@@ -1594,8 +1594,8 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver' || props.resource?.kind === 'StorageClass') {
-    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, CSIDrivers, and StorageClasses have their own custom columns or no Status column needed
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret' || props.resource?.kind === 'CSINode' || props.resource?.kind === 'CSIDriver' || props.resource?.kind === 'StorageClass' || props.resource?.kind === 'PriorityClass' || props.resource?.kind === 'ServiceAccount' || props.resource?.kind === 'Role') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, Secrets, CSINodes, CSIDrivers, StorageClasses, PriorityClasses, ServiceAccounts, and Roles have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns
     baseColumns.push(

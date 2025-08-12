@@ -718,6 +718,77 @@
       </div>
     </div>
 
+    <!-- Role Rules -->
+    <div v-if="resourceKind === 'Role' && (resourceData?.roleSpec?.rules || resourceData?.completeObject?.rules)" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
+        Rules
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.roleSpec?.rules || resourceData?.completeObject?.rules || []).length }})</span>
+      </h3>
+      <div class="space-y-3">
+        <div v-for="(rule, index) in (resourceData?.roleSpec?.rules || resourceData?.completeObject?.rules || [])" :key="index"
+             class="bg-surface-secondary rounded border border-border-primary p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <!-- API Groups -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">API Groups:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(apiGroup, apiIndex) in (rule.apiGroups || [''])" :key="apiIndex"
+                        class="status-badge status-badge-info">
+                    {{ apiGroup === '' ? 'core' : apiGroup }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Resources -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">Resources:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(resource, resIndex) in (rule.resources || [])" :key="resIndex"
+                        class="status-badge status-badge-success">
+                    {{ resource }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Resource Names (if specified) -->
+              <div v-if="rule.resourceNames?.length" class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-medium text-text-secondary">Resource Names:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(resourceName, nameIndex) in rule.resourceNames" :key="nameIndex"
+                        class="status-badge status-badge-yellow">
+                    {{ resourceName }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Verbs -->
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-text-secondary">Verbs:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(verb, verbIndex) in (rule.verbs || [])" :key="verbIndex"
+                        class="status-badge status-badge-secondary">
+                    {{ verb }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Copy button -->
+            <button
+              @click="copyRoleRule(rule)"
+              class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="`Copy rule ${index + 1}`"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 002 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="elevated-surface rounded-lg p-4">
       <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Status</h3>
@@ -1227,6 +1298,25 @@ async function copyNodeCondition(condition: any): Promise<void> {
     // Fallback for older browsers
     const textArea = document.createElement('textarea')
     textArea.value = `Type: ${condition.type}, Status: ${condition.status}, Reason: ${condition.reason || 'N/A'}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyRoleRule(rule: any): Promise<void> {
+  try {
+    const ruleText = `Role Rule: ${JSON.stringify(rule, null, 2)}`
+    await navigator.clipboard.writeText(ruleText)
+  } catch (error) {
+    console.error('Failed to copy Role rule:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    const apiGroups = rule.apiGroups?.join(', ') || 'core'
+    const resources = rule.resources?.join(', ') || 'N/A'
+    const verbs = rule.verbs?.join(', ') || 'N/A'
+    textArea.value = `API Groups: ${apiGroups}, Resources: ${resources}, Verbs: ${verbs}`
     document.body.appendChild(textArea)
     textArea.select()
     document.execCommand('copy')
