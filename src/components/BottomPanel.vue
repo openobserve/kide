@@ -2,7 +2,7 @@
   <!-- Bottom Unified Terminal Panel -->
   <div 
     v-if="isOpen" 
-    class="flex-none bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-xl"
+    class="flex-none panel-background border-t border-border-primary shadow-xl"
     :style="{ height: (isMaximized ? '100vh' : panelHeight + 'px') }"
   >
     <UnifiedTerminalTabs

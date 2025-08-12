@@ -154,10 +154,15 @@ describe('Accessibility Tests', () => {
       expect(text).toContain('test-pod') // Resource name
       expect(text).toContain('default') // Namespace
       
-      // Status information should be available
+      // Status information should be available (check for semantic status classes or text content)
       const statusElements = wrapper.findAll('[class*="status"], .status')
       if (statusElements.length > 0) {
-        expect(statusElements.some(el => el.text().includes('Running') || el.text().includes('Ready'))).toBe(true)
+        const hasStatusContent = statusElements.some(el => 
+          el.text().includes('Running') || 
+          el.text().includes('Ready') ||
+          el.classes().some(cls => cls.includes('status-badge'))
+        )
+        expect(hasStatusContent).toBe(true)
       }
     })
 

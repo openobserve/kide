@@ -1,29 +1,21 @@
 // UI Constants and shared styles
 
 export const TAB_STYLES = {
-  active: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100',
-  inactive: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+  active: 'bg-surface-primary text-text-primary',
+  inactive: 'bg-surface-secondary text-text-secondary interactive-hover'
 } as const
 
 export const CONNECTION_STATUS = {
-  connected: 'bg-green-500 animate-pulse',
-  connecting: 'bg-yellow-500 animate-pulse', 
-  disconnected: 'bg-gray-400'
+  connected: 'bg-status-success animate-pulse',
+  connecting: 'bg-status-warning animate-pulse', 
+  disconnected: 'bg-text-muted'
 } as const
 
 export const DROPDOWN_STYLES = {
-  menu: 'position: fixed; z-index: 999999; background: white; border: 2px solid #374151; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); min-width: 160px; max-height: 200px; overflow-y: auto;',
-  item: 'padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.15s;',
-  selectedItem: {
-    backgroundColor: '#dbeafe',
-    color: '#1d4ed8',
-    fontWeight: 'bold'
-  },
-  defaultItem: {
-    backgroundColor: 'transparent',
-    color: '#374151',
-    fontWeight: 'normal'
-  }
+  menu: 'dropdown-menu',
+  item: 'dropdown-item',
+  selectedItem: 'dropdown-item dropdown-item-selected',
+  defaultItem: 'dropdown-item'
 } as const
 
 export const KEYBOARD_SHORTCUTS = {

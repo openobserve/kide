@@ -3,140 +3,505 @@
 @theme {
   --default-transition-duration: 150ms;
   
-  /* Dark mode support */
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  /* Dark Theme Semantic Colors */
+  --color-background-primary: #000000;    /* Pure black for main backgrounds */
+  --color-background-secondary: #1f2937;  /* Gray-800 for secondary backgrounds */
+  --color-background-tertiary: #374151;   /* Gray-700 for tertiary backgrounds */
+  
+  --color-surface-primary: #000000;       /* Pure black for main surfaces */
+  --color-surface-secondary: #1f2937;     /* Gray-800 for elevated surfaces */
+  --color-surface-tertiary: #374151;      /* Gray-700 for higher elevation */
+  
+  --color-text-primary: #ffffff;          /* Pure white for primary text */
+  --color-text-secondary: #9ca3af;        /* Gray-400 for secondary text - original readability */
+  --color-text-tertiary: #e5e7eb;         /* Gray-200 for tertiary text */
+  --color-text-muted: #d1d5db;            /* Gray-300 for muted text */
+  
+  --color-border-primary: #374151;        /* Gray-700 for primary borders */
+  --color-border-secondary: #4b5563;      /* Gray-600 for secondary borders */
+  --color-border-muted: #6b7280;          /* Gray-500 for subtle borders */
+  
+  /* Interactive & Accent Colors */
+  --color-accent-primary: #3b82f6;        /* Blue-500 for primary interactive elements */
+  --color-accent-hover: #2563eb;          /* Blue-600 for hover states */
+  --color-accent-pressed: #1d4ed8;        /* Blue-700 for pressed states */
+  
+  /* Status Colors */
+  --color-status-success: #10b981;        /* Emerald-500 for success states */
+  --color-status-warning: #f59e0b;        /* Amber-500 for warning states */
+  --color-status-error: #ef4444;          /* Red-500 for error states */
+  --color-status-info: #6366f1;           /* Indigo-500 for info states */
+  
+  /* Overlay Colors */
+  --color-hover-overlay: rgba(59, 130, 246, 0.1);    /* Blue overlay for hover */
+  --color-selected-overlay: rgba(59, 130, 246, 0.2);  /* Blue overlay for selected */
+  --color-focus-overlay: rgba(59, 130, 246, 0.3);     /* Blue overlay for focus */
+  
+  /* Additional utility colors for Tailwind classes */
+  --color-accent-primary-color: #3b82f6;
+  --color-accent-hover-color: #2563eb;
 }
 
-/* CRITICAL: Dark mode class-based overrides */
-/* These must come after Tailwind to override media queries */
+/* ============================================
+ * DARK THEME ARCHITECTURE
+ * ============================================
+ * This app only supports dark theme. All styling 
+ * is optimized for dark mode with semantic colors.
+ */
 
-/* Main layout elements */
-html.dark .bg-white {
-  background-color: #1f2937 !important;
+/* Semantic Component Classes for Dark Theme */
+.app-background {
+  @apply bg-background-primary;
 }
 
-html.dark .bg-gray-50 {
-  background-color: #374151 !important;
+.panel-background {
+  @apply bg-surface-primary border border-border-primary;
 }
 
-html.dark .bg-gray-100 {
-  background-color: #4b5563 !important;
+.secondary-background {
+  @apply bg-background-secondary;
 }
 
-html.dark .border-gray-200 {
-  border-color: #4b5563 !important;
+.tertiary-background {
+  @apply bg-background-tertiary;
 }
 
-html.dark .border-gray-300 {
-  border-color: #6b7280 !important;
+.elevated-surface {
+  @apply bg-surface-secondary border border-border-primary;
 }
 
-html.dark .text-gray-900 {
-  color: #f9fafb !important;
+.navigation-background {
+  @apply bg-surface-primary;
 }
 
-html.dark .text-gray-800 {
-  color: #e5e7eb !important;
+.table-background {
+  @apply bg-surface-primary;
 }
 
-html.dark .text-gray-700 {
-  color: #d1d5db !important;
+.table-row-background {
+  @apply bg-surface-primary hover:bg-surface-secondary transition-colors duration-150;
 }
 
-html.dark .text-gray-600 {
-  color: #9ca3af !important;
+.table-header-background {
+  @apply bg-surface-primary;
 }
 
-html.dark .text-gray-500 {
-  color: #6b7280 !important;
+.table-header-text {
+  @apply text-text-tertiary hover:text-text-secondary;
 }
 
-/* Hover states */
-html.dark .hover\:bg-gray-50:hover {
-  background-color: #374151 !important;
+.table-cell-text {
+  @apply text-text-secondary;
 }
 
-html.dark .hover\:bg-gray-100:hover {
-  background-color: #4b5563 !important;
+/* Text Semantic Classes */
+.text-primary {
+  @apply text-text-primary;
 }
 
-html.dark .hover\:text-gray-900:hover {
-  color: #f9fafb !important;
+.text-secondary {
+  @apply text-text-secondary;
 }
 
-html.dark .hover\:text-gray-800:hover {
-  color: #e5e7eb !important;
+.text-tertiary {
+  @apply text-text-tertiary;
 }
 
-/* Dark-specific classes */
-html.dark .dark\:bg-gray-800 {
-  background-color: #1f2937 !important;
+.text-muted {
+  @apply text-text-muted;
 }
 
-html.dark .dark\:bg-gray-700 {
-  background-color: #374151 !important;
+/* Interactive States */
+.interactive-hover {
+  @apply hover:bg-surface-secondary transition-colors duration-150;
 }
 
-html.dark .dark\:border-gray-700 {
-  border-color: #374151 !important;
+.hover-interactive {
+  background-color: var(--color-hover-overlay);
+  transition: background-color 150ms;
 }
 
-html.dark .dark\:text-gray-400 {
-  color: #9ca3af !important;
+.selected-state {
+  background-color: var(--color-selected-overlay);
+  border-color: var(--color-accent-primary);
 }
 
-html.dark .dark\:text-gray-300 {
-  color: #d1d5db !important;
+.focus-state {
+  background-color: var(--color-focus-overlay);
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
 }
 
-html.dark .dark\:text-gray-200 {
-  color: #e5e7eb !important;
+/* Interactive Elements */
+.btn-primary {
+  background-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  transition: background-color 150ms;
 }
 
-html.dark .dark\:text-blue-300 {
-  color: #93c5fd !important;
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
 }
 
-html.dark .dark\:text-blue-400 {
-  color: #60a5fa !important;
+.btn-primary:active {
+  background-color: var(--color-accent-pressed);
 }
 
-html.dark .dark\:hover\:bg-gray-700:hover {
-  background-color: #374151 !important;
+/* Status Classes */
+.status-success {
+  color: var(--color-status-success);
 }
 
-html.dark .dark\:hover\:bg-gray-600:hover {
-  background-color: #4b5563 !important;
+.status-warning {
+  color: var(--color-status-warning);
 }
 
-html.dark .dark\:hover\:text-gray-200:hover {
-  color: #e5e7eb !important;
+.status-error {
+  color: var(--color-status-error);
 }
 
-html.dark .dark\:hover\:text-blue-300:hover {
-  color: #93c5fd !important;
+.status-info {
+  color: var(--color-status-info);
 }
 
-/* Remove tooltip delay for immediate display */
+/* Status Badge System */
+.status-badge {
+  @apply px-2 py-0.5 rounded text-xs font-medium inline-flex items-center;
+}
+
+.status-badge-success {
+  background-color: rgba(16, 185, 129, 0.2); /* green-500 with 20% opacity */
+  color: #6ee7b7; /* green-300 */
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-badge-warning {
+  background-color: rgba(245, 158, 11, 0.2); /* amber-500 with 20% opacity */
+  color: #fcd34d; /* amber-300 */
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-badge-error {
+  background-color: rgba(239, 68, 68, 0.2); /* red-500 with 20% opacity */
+  color: #fca5a5; /* red-300 */
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-badge-info {
+  background-color: rgba(59, 130, 246, 0.2); /* blue-500 with 20% opacity */
+  color: #93c5fd; /* blue-300 */
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-badge-secondary {
+  background-color: rgba(156, 163, 175, 0.2); /* gray-400 with 20% opacity */
+  color: #d1d5db; /* gray-300 */
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.status-badge-yellow {
+  background-color: rgba(234, 179, 8, 0.2); /* yellow-500 with 20% opacity */
+  color: #fde047; /* yellow-300 */
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.status-badge-orange {
+  background-color: rgba(249, 115, 22, 0.2); /* orange-500 with 20% opacity */
+  color: #fdba74; /* orange-300 */
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+/* Additional semantic utility classes for complete coverage */
+.dropdown-background {
+  @apply bg-surface-secondary border border-border-primary rounded-md shadow-lg;
+}
+
+.dropdown-menu {
+  position: fixed;
+  z-index: 999999;
+  background-color: var(--color-surface-secondary);
+  border: 2px solid var(--color-border-primary);
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.15s;
+  color: var(--color-text-primary);
+}
+
+.dropdown-item:hover {
+  background-color: var(--color-surface-tertiary);
+}
+
+.dropdown-item-selected {
+  background-color: var(--color-selected-overlay);
+  color: var(--color-accent-primary);
+  font-weight: bold;
+}
+
+/* Category Color System */
+.category-amber {
+  background-color: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+.category-amber:hover { background-color: rgba(251, 191, 36, 0.25); }
+.category-amber-text { color: #fbbf24; }
+.category-amber-icon { color: #f59e0b; }
+.category-amber-count { color: #f59e0b; }
+
+.category-blue {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+.category-blue:hover { background-color: rgba(59, 130, 246, 0.25); }
+.category-blue-text { color: #60a5fa; }
+.category-blue-icon { color: #3b82f6; }
+.category-blue-count { color: #3b82f6; }
+
+.category-green {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+.category-green:hover { background-color: rgba(34, 197, 94, 0.25); }
+.category-green-text { color: #4ade80; }
+.category-green-icon { color: #22c55e; }
+.category-green-count { color: #22c55e; }
+
+.category-purple {
+  background-color: rgba(147, 51, 234, 0.15);
+  color: #a855f7;
+}
+.category-purple:hover { background-color: rgba(147, 51, 234, 0.25); }
+.category-purple-text { color: #a855f7; }
+.category-purple-icon { color: #9333ea; }
+.category-purple-count { color: #9333ea; }
+
+.category-cyan {
+  background-color: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+}
+.category-cyan:hover { background-color: rgba(6, 182, 212, 0.25); }
+.category-cyan-text { color: #22d3ee; }
+.category-cyan-icon { color: #06b6d4; }
+.category-cyan-count { color: #06b6d4; }
+
+.category-orange {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+}
+.category-orange:hover { background-color: rgba(249, 115, 22, 0.25); }
+.category-orange-text { color: #fb923c; }
+.category-orange-icon { color: #f97316; }
+.category-orange-count { color: #f97316; }
+
+.category-red {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+.category-red:hover { background-color: rgba(239, 68, 68, 0.25); }
+.category-red-text { color: #f87171; }
+.category-red-icon { color: #ef4444; }
+.category-red-count { color: #ef4444; }
+
+.category-indigo {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+.category-indigo:hover { background-color: rgba(99, 102, 241, 0.25); }
+.category-indigo-text { color: #818cf8; }
+.category-indigo-icon { color: #6366f1; }
+.category-indigo-count { color: #6366f1; }
+
+.category-teal {
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+.category-teal:hover { background-color: rgba(20, 184, 166, 0.25); }
+.category-teal-text { color: #2dd4bf; }
+.category-teal-icon { color: #14b8a6; }
+.category-teal-count { color: #14b8a6; }
+
+.category-gray {
+  background-color: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+}
+.category-gray:hover { background-color: rgba(107, 114, 128, 0.25); }
+.category-gray-text { color: #9ca3af; }
+.category-gray-icon { color: #6b7280; }
+.category-gray-count { color: #6b7280; }
+
+.input-background {
+  @apply bg-surface-primary border border-border-primary;
+}
+
+.input-focus {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-color: var(--color-accent-primary);
+}
+
+.button-secondary {
+  @apply bg-surface-secondary text-text-secondary hover:bg-surface-tertiary transition-colors duration-150;
+}
+
+.button-ghost {
+  @apply bg-transparent text-text-secondary hover:bg-surface-secondary transition-colors duration-150;
+}
+
+.card-container {
+  background-color: var(--color-surface-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.status-badge {
+  @apply px-2 py-1 text-xs font-medium rounded-full;
+}
+
+.header-background {
+  background-color: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.divider {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+/* Form Control Semantic System */
+.form-input {
+  background-color: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-primary);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.form-select {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 0.375rem;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-primary);
+}
+
+.form-checkbox {
+  background-color: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-accent-primary);
+  border-radius: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.form-checkbox:checked {
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.form-checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary-color), 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.form-radio {
+  background-color: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-accent-primary);
+  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+}
+
+.form-radio:checked {
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.form-radio:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary-color), 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  background-color: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 150ms, box-shadow 150ms;
+  resize: vertical;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-primary);
+}
+
+.form-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Tooltip Styles - Instant Display */
 [title] {
-  --tooltip-delay: 0ms !important;
+  --tooltip-delay: 0ms;
 }
 
-/* Browser-specific tooltip delay removal */
 [title]:hover::after {
-  animation-delay: 0s !important;
+  animation-delay: 0s;
 }
 
-/* Alternative approach for webkit browsers */
 [title]::-webkit-tooltip {
-  animation-delay: 0s !important;
+  animation-delay: 0s;
+}
+
+/* Scrollbar Styles for Dark Theme */
+.dark-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-background-primary);
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-muted);
+  border-radius: 4px;
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }

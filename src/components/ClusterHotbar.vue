@@ -1,6 +1,6 @@
 <!-- ClusterHotbar.vue - Top tabs for selecting Kubernetes clusters -->
 <template>
-  <div class="bg-gray-800 border-b border-gray-700 flex items-center h-12 px-4">
+  <div class="header-background flex items-center h-12 px-4">
     <!-- Cluster tabs -->
     <div class="flex-1 flex items-center space-x-1 overflow-x-auto">
       <div 
@@ -13,8 +13,8 @@
           :class="[
             'px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center space-x-2 min-w-0',
             context.name === selectedContext?.name 
-              ? 'bg-blue-900/30 text-blue-300 border-b-2 border-blue-400' 
-              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+              ? 'selected-state text-accent-primary border-b-2 border-accent-primary' 
+              : 'text-text-muted hover:text-text-secondary hover:bg-surface-secondary'
           ]"
           :title="context.name"
         >
@@ -24,7 +24,7 @@
               'w-2 h-2 rounded-full flex-shrink-0',
               getContextStatus(context) === 'connected' ? 'bg-green-500' :
               getContextStatus(context) === 'connecting' ? 'bg-yellow-500' :
-              getContextStatus(context) === 'failed' ? 'bg-red-500' : 'bg-gray-400'
+              getContextStatus(context) === 'failed' ? 'bg-red-500' : 'bg-text-muted'
             ]"
           />
           
@@ -43,11 +43,11 @@
       <button
         @click="refreshContexts"
         :disabled="refreshing"
-        class="h-8 w-8 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+        class="h-8 w-8 rounded button-secondary disabled:opacity-50 flex items-center justify-center"
         title="Refresh contexts"
       >
         <svg 
-          :class="['w-4 h-4 text-gray-400', refreshing ? 'animate-spin' : '']" 
+          :class="['w-4 h-4 text-text-muted', refreshing ? 'animate-spin' : '']" 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"

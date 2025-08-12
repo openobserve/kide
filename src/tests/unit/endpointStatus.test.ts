@@ -22,7 +22,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpoints)).toBe('Ready')
-      expect(getStatusClass(endpoints)).toContain('green')
+      expect(getStatusClass(endpoints)).toContain('status-badge-success')
     })
 
     it('should return NotReady when endpoints has subsets but no addresses', () => {
@@ -38,7 +38,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpoints)).toBe('NotReady')
-      expect(getStatusClass(endpoints)).toContain('red')
+      expect(getStatusClass(endpoints)).toContain('status-badge-error')
     })
 
     it('should return NotReady when endpoints has no subsets', () => {
@@ -49,7 +49,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpoints)).toBe('NotReady')
-      expect(getStatusClass(endpoints)).toContain('red')
+      expect(getStatusClass(endpoints)).toContain('status-badge-error')
     })
 
     it('should return NotReady when endpoints has undefined subsets', () => {
@@ -59,7 +59,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpoints)).toBe('NotReady')
-      expect(getStatusClass(endpoints)).toContain('red')
+      expect(getStatusClass(endpoints)).toContain('status-badge-error')
     })
 
     it('should return Ready when at least one subset has addresses', () => {
@@ -79,7 +79,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpoints)).toBe('Ready')
-      expect(getStatusClass(endpoints)).toContain('green')
+      expect(getStatusClass(endpoints)).toContain('status-badge-success')
     })
   })
 
@@ -105,7 +105,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('Ready')
-      expect(getStatusClass(endpointSlice)).toContain('green')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-success')
     })
 
     it('should return Ready when at least one endpoint is ready', () => {
@@ -129,7 +129,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('Ready')
-      expect(getStatusClass(endpointSlice)).toContain('green')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-success')
     })
 
     it('should return NotReady when all endpoints are not ready', () => {
@@ -153,7 +153,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('NotReady')
-      expect(getStatusClass(endpointSlice)).toContain('red')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-error')
     })
 
     it('should return Ready when endpoint has no ready condition (defaults to ready)', () => {
@@ -172,7 +172,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('Ready')
-      expect(getStatusClass(endpointSlice)).toContain('green')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-success')
     })
 
     it('should return NotReady when endpointslice has no endpoints', () => {
@@ -185,7 +185,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('NotReady')
-      expect(getStatusClass(endpointSlice)).toContain('red')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-error')
     })
 
     it('should return NotReady when endpointslice has undefined endpoints', () => {
@@ -195,7 +195,7 @@ describe('useResourceStatus - Endpoints and EndpointSlices', () => {
       }
 
       expect(getStatusText(endpointSlice)).toBe('NotReady')
-      expect(getStatusClass(endpointSlice)).toContain('red')
+      expect(getStatusClass(endpointSlice)).toContain('status-badge-error')
     })
   })
 })

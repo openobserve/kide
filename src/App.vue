@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen bg-gray-900 flex flex-col overflow-hidden">
+  <div class="h-screen app-background flex flex-col overflow-hidden">
     <!-- Cluster Tabs at the top -->
     <div class="flex-none">
       <ClusterHotbar 

@@ -7,7 +7,7 @@
   ></div>
 
   <!-- Panel -->
-  <div class="fixed inset-y-0 right-0 bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 z-50 flex flex-col transform transition-transform duration-300"
+  <div class="fixed inset-y-0 right-0 bg-surface-primary shadow-2xl border-l border-border-primary z-50 flex flex-col transform transition-transform duration-300"
        style="width: 60%"
        :class="{ 'translate-x-full': !isOpen, 'translate-x-0': isOpen }">
     
@@ -51,15 +51,15 @@
 
       <!-- Data Tab (Secret and ConfigMap resources) -->
       <div v-show="activeTab === 'data'" class="h-full overflow-y-auto p-6 space-y-6">
-        <div v-if="(resourceKind === 'Secret' || resourceKind === 'ConfigMap') && getResourceData()" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ resourceKind === 'Secret' ? 'Secret Data' : 'ConfigMap Data' }}</h3>
+        <div v-if="(resourceKind === 'Secret' || resourceKind === 'ConfigMap') && getResourceData()" class="elevated-surface rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-text-primary mb-3">{{ resourceKind === 'Secret' ? 'Secret Data' : 'ConfigMap Data' }}</h3>
           <div class="space-y-2">
             <div v-for="(value, key) in getResourceData()" :key="key"
                  :class="[
-                   'bg-white dark:bg-gray-800 rounded border p-3',
+                   'bg-surface-secondary rounded border p-3',
                    resourceKind === 'Secret' 
-                     ? 'border-green-200 dark:border-green-700' 
-                     : 'border-blue-200 dark:border-blue-700'
+                     ? 'border-green-700' 
+                     : 'border-blue-700'
                  ]">
               <div class="flex items-start justify-between gap-2">
                 <div class="flex-1 min-w-0">
@@ -67,8 +67,8 @@
                     <span :class="[
                       'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                       resourceKind === 'Secret'
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                        ? 'status-badge-success'
+                        : 'status-badge-info'
                     ]">
                       {{ key }}
                     </span>
@@ -78,8 +78,8 @@
                       :class="[
                         'text-xs px-2 py-0.5 rounded transition-colors',
                         visibleData[key] 
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50' 
-                          : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50'
+                          ? 'status-badge-error hover:opacity-80' 
+                          : 'status-badge-warning hover:opacity-80'
                       ]"
                     >
                       {{ visibleData[key] ? 'Hide' : 'Show' }}
@@ -87,28 +87,28 @@
                     <button
                       v-if="(visibleData[key] || resourceKind === 'ConfigMap') && isLargeData(getDisplayValue(value))"
                       @click="toggleDataExpansion(key)"
-                      class="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                      class="text-xs text-text-secondary hover:text-text-primary transition-colors"
                     >
                       {{ expandedData.has(key) ? 'Collapse' : 'Expand' }}
                     </button>
                   </div>
-                  <div class="text-xs text-gray-900 dark:text-gray-100 font-mono">
+                  <div class="text-xs text-text-primary font-mono">
                     <!-- For Secrets: Show based on visibility -->
                     <div v-if="resourceKind === 'Secret'">
-                      <span v-if="!visibleData[key]" class="italic text-gray-500 dark:text-gray-400">••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</span>
+                      <span v-if="!visibleData[key]" class="italic text-text-secondary">••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</span>
                       <div v-else>
                         <div v-if="!isLargeData(getDisplayValue(value))" class="break-all">
                           {{ getDisplayValue(value) }}
                         </div>
                         <div v-else>
-                          <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-2 rounded border max-h-60 overflow-y-auto">
+                          <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-surface-tertiary p-2 rounded border max-h-60 overflow-y-auto">
                             {{ formatDataValue(getDisplayValue(value)) }}
                           </div>
-                          <div v-else class="text-gray-600 dark:text-gray-400">
+                          <div v-else class="text-text-secondary">
                             {{ getTruncatedDataValue(getDisplayValue(value)) }}
                             <button
                               @click="toggleDataExpansion(key)"
-                              class="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+                              class="ml-1 text-accent-primary hover:underline"
                             >
                               Show more
                             </button>
@@ -122,14 +122,14 @@
                         {{ getDisplayValue(value) }}
                       </div>
                       <div v-else>
-                        <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-2 rounded border max-h-60 overflow-y-auto">
+                        <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-surface-tertiary p-2 rounded border max-h-60 overflow-y-auto">
                           {{ formatDataValue(getDisplayValue(value)) }}
                         </div>
-                        <div v-else class="text-gray-600 dark:text-gray-400">
+                        <div v-else class="text-text-secondary">
                           {{ getTruncatedDataValue(getDisplayValue(value)) }}
                           <button
                             @click="toggleDataExpansion(key)"
-                            class="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+                            class="ml-1 text-accent-primary hover:underline"
                           >
                             Show more
                           </button>
@@ -141,7 +141,7 @@
                 <div class="flex items-center gap-1 flex-shrink-0">
                   <button
                     @click="copyToClipboard(getDisplayValue(value), key)"
-                    class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    class="p-1 text-gray-400 hover:text-text-secondary transition-colors"
                     :title="`Copy ${key}`"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,18 +156,18 @@
 
         <!-- Fallback if no data -->
         <div v-else-if="resourceKind === 'Secret' || resourceKind === 'ConfigMap'" class="flex items-center justify-center h-32">
-          <p class="text-gray-500 dark:text-gray-400">No data available for this {{ resourceKind.toLowerCase() }}</p>
+          <p class="text-text-secondary">No data available for this {{ resourceKind.toLowerCase() }}</p>
         </div>
 
         <!-- Not a Secret or ConfigMap Resource -->
         <div v-else class="flex items-center justify-center h-32">
           <div class="text-center">
-            <div class="text-gray-400 dark:text-gray-500 mb-2">
+            <div class="text-text-muted mb-2">
               <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Data view is only available for Secret and ConfigMap resources</p>
+            <p class="text-sm text-text-secondary">Data view is only available for Secret and ConfigMap resources</p>
           </div>
         </div>
       </div>
@@ -177,7 +177,7 @@
         <div v-if="yamlLoading" class="flex items-center justify-center h-full">
           <div class="text-center">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Loading full resource data...</p>
+            <p class="text-sm text-text-secondary">Loading full resource data...</p>
           </div>
         </div>
         <YamlEditor
@@ -196,7 +196,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <p class="text-sm text-red-600 dark:text-red-400">Failed to load full resource data</p>
+            <p class="text-sm text-status-error">Failed to load full resource data</p>
             <button 
               @click="fetchFullResource" 
               class="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
@@ -212,14 +212,14 @@
         <!-- Pod-specific components -->
         <div 
           v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.containers"
-          class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+          class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Containers</h3>
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).containers" :key="container.name"
-                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+                 class="bg-surface-secondary rounded border border-border-primary p-3">
               <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ container.name }}</h4>
+                <h4 class="text-sm font-medium text-text-primary">{{ container.name }}</h4>
                 <span :class="[
                   'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
                   getOverviewContainerStatusColor(container.name)
@@ -229,22 +229,22 @@
               </div>
               <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Image</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono break-all">{{ container.image }}</dd>
+                  <dt class="text-text-secondary">Image</dt>
+                  <dd class="text-text-primary font-mono break-all">{{ container.image }}</dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Pull Policy</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ container.imagePullPolicy || 'Always' }}</dd>
+                  <dt class="text-text-secondary">Pull Policy</dt>
+                  <dd class="text-text-primary">{{ container.imagePullPolicy || 'Always' }}</dd>
                 </div>
                 <div v-if="container.ports?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Ports</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono">
+                  <dt class="text-text-secondary">Ports</dt>
+                  <dd class="text-text-primary font-mono">
                     {{ container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ') }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Restart Count</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ getOverviewContainerRestartCount(container.name) }}</dd>
+                  <dt class="text-text-secondary">Restart Count</dt>
+                  <dd class="text-text-primary">{{ getOverviewContainerRestartCount(container.name) }}</dd>
                 </div>
               </dl>
               
@@ -261,46 +261,46 @@
         <!-- Job-specific components -->
         <div 
           v-if="resourceKind === 'Job' && getGenericSpec(resourceData)?.template?.spec?.containers"
-          class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+          class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Job Template Containers</h3>
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Job Template Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).template.spec.containers" :key="container.name"
-                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+                 class="bg-surface-secondary rounded border border-border-primary p-3">
               <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ container.name }}</h4>
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                <h4 class="text-sm font-medium text-text-primary">{{ container.name }}</h4>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium status-badge-info">
                   Template
                 </span>
               </div>
               <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Image</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono break-all">{{ container.image }}</dd>
+                  <dt class="text-text-secondary">Image</dt>
+                  <dd class="text-text-primary font-mono break-all">{{ container.image }}</dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Pull Policy</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ container.imagePullPolicy || 'Always' }}</dd>
+                  <dt class="text-text-secondary">Pull Policy</dt>
+                  <dd class="text-text-primary">{{ container.imagePullPolicy || 'Always' }}</dd>
                 </div>
                 <div v-if="container.ports?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Ports</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono">
+                  <dt class="text-text-secondary">Ports</dt>
+                  <dd class="text-text-primary font-mono">
                     {{ container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ') }}
                   </dd>
                 </div>
                 <div v-if="container.restartPolicy">
-                  <dt class="text-gray-500 dark:text-gray-400">Restart Policy</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ container.restartPolicy }}</dd>
+                  <dt class="text-text-secondary">Restart Policy</dt>
+                  <dd class="text-text-primary">{{ container.restartPolicy }}</dd>
                 </div>
                 <div v-if="container.command?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Command</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                  <dt class="text-text-secondary">Command</dt>
+                  <dd class="text-text-primary font-mono text-xs">
                     {{ container.command.join(' ') }}
                   </dd>
                 </div>
                 <div v-if="container.args?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Args</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                  <dt class="text-text-secondary">Args</dt>
+                  <dd class="text-text-primary font-mono text-xs">
                     {{ container.args.join(' ') }}
                   </dd>
                 </div>
@@ -319,42 +319,42 @@
         <!-- Job Init Containers -->
         <div 
           v-if="resourceKind === 'Job' && getGenericSpec(resourceData)?.template?.spec?.initContainers"
-          class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+          class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Job Template Init Containers</h3>
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Job Template Init Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).template.spec.initContainers" :key="container.name"
-                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+                 class="bg-surface-secondary rounded border border-border-primary p-3">
               <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ container.name }}</h4>
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+                <h4 class="text-sm font-medium text-text-primary">{{ container.name }}</h4>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium status-badge-secondary">
                   Init Template
                 </span>
               </div>
               <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Image</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono break-all">{{ container.image }}</dd>
+                  <dt class="text-text-secondary">Image</dt>
+                  <dd class="text-text-primary font-mono break-all">{{ container.image }}</dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Pull Policy</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ container.imagePullPolicy || 'Always' }}</dd>
+                  <dt class="text-text-secondary">Pull Policy</dt>
+                  <dd class="text-text-primary">{{ container.imagePullPolicy || 'Always' }}</dd>
                 </div>
                 <div v-if="container.ports?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Ports</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono">
+                  <dt class="text-text-secondary">Ports</dt>
+                  <dd class="text-text-primary font-mono">
                     {{ container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ') }}
                   </dd>
                 </div>
                 <div v-if="container.command?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Command</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                  <dt class="text-text-secondary">Command</dt>
+                  <dd class="text-text-primary font-mono text-xs">
                     {{ container.command.join(' ') }}
                   </dd>
                 </div>
                 <div v-if="container.args?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Args</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                  <dt class="text-text-secondary">Args</dt>
+                  <dd class="text-text-primary font-mono text-xs">
                     {{ container.args.join(' ') }}
                   </dd>
                 </div>
@@ -373,14 +373,14 @@
         <!-- Pod Init Containers -->
         <div 
           v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.initContainers"
-          class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+          class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Init Containers</h3>
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Init Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).initContainers" :key="container.name"
-                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+                 class="bg-surface-secondary rounded border border-border-primary p-3">
               <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ container.name }}</h4>
+                <h4 class="text-sm font-medium text-text-primary">{{ container.name }}</h4>
                 <span :class="[
                   'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
                   getOverviewInitContainerStatusColor(container.name)
@@ -390,22 +390,22 @@
               </div>
               <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Image</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono break-all">{{ container.image }}</dd>
+                  <dt class="text-text-secondary">Image</dt>
+                  <dd class="text-text-primary font-mono break-all">{{ container.image }}</dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Pull Policy</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ container.imagePullPolicy || 'Always' }}</dd>
+                  <dt class="text-text-secondary">Pull Policy</dt>
+                  <dd class="text-text-primary">{{ container.imagePullPolicy || 'Always' }}</dd>
                 </div>
                 <div v-if="container.ports?.length">
-                  <dt class="text-gray-500 dark:text-gray-400">Ports</dt>
-                  <dd class="text-gray-900 dark:text-gray-100 font-mono">
+                  <dt class="text-text-secondary">Ports</dt>
+                  <dd class="text-text-primary font-mono">
                     {{ container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ') }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-gray-500 dark:text-gray-400">Restart Count</dt>
-                  <dd class="text-gray-900 dark:text-gray-100">{{ getOverviewInitContainerRestartCount(container.name) }}</dd>
+                  <dt class="text-text-secondary">Restart Count</dt>
+                  <dd class="text-text-primary">{{ getOverviewInitContainerRestartCount(container.name) }}</dd>
                 </div>
               </dl>
               
@@ -421,7 +421,7 @@
         
         <!-- Fallback if no container data -->
         <div v-if="(resourceKind === 'Pod' && !getGenericSpec(resourceData)?.containers && !getGenericSpec(resourceData)?.initContainers) || (resourceKind === 'Job' && !getGenericSpec(resourceData)?.template?.spec?.containers && !getGenericSpec(resourceData)?.template?.spec?.initContainers) || (resourceKind !== 'Pod' && resourceKind !== 'Job')" class="flex items-center justify-center h-32">
-          <p class="text-gray-500 dark:text-gray-400">No container information available</p>
+          <p class="text-text-secondary">No container information available</p>
         </div>
       </div>
 
@@ -691,10 +691,10 @@ onMounted(() => {
 function getOverviewContainerStatusColor(containerName: string): string {
   const status = getOverviewContainerStatus(containerName)
   switch (status) {
-    case 'Running': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-    case 'Waiting': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-    case 'Terminated': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-    default: return 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
+    case 'Running': return 'status-badge-success'
+    case 'Waiting': return 'status-badge-yellow'
+    case 'Terminated': return 'status-badge-error'
+    default: return 'status-badge-secondary'
   }
 }
 
@@ -718,10 +718,10 @@ function getOverviewContainerRestartCount(containerName: string): number {
 function getOverviewInitContainerStatusColor(containerName: string): string {
   const status = getOverviewInitContainerStatus(containerName)
   switch (status) {
-    case 'Running': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-    case 'Waiting': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-    case 'Terminated': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-    default: return 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
+    case 'Running': return 'status-badge-success'
+    case 'Waiting': return 'status-badge-yellow'
+    case 'Terminated': return 'status-badge-error'
+    default: return 'status-badge-secondary'
   }
 }
 

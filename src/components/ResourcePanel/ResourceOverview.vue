@@ -1,52 +1,52 @@
 <template>
   <div class="h-full overflow-y-auto p-6 space-y-6">
     <!-- Resource Information -->
-    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ resourceKind }} Information</h3>
+    <div class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">{{ resourceKind }} Information</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Name</dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">{{ resourceData?.metadata?.name }}</dd>
+          <dt class="text-xs font-medium text-text-secondary">Name</dt>
+          <dd class="text-sm text-text-primary font-mono">{{ resourceData?.metadata?.name }}</dd>
         </div>
         <div v-if="resourceData?.metadata?.namespace">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Namespace</dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100">{{ resourceData.metadata.namespace }}</dd>
+          <dt class="text-xs font-medium text-text-secondary">Namespace</dt>
+          <dd class="text-sm text-text-primary">{{ resourceData.metadata.namespace }}</dd>
         </div>
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Kind</dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100">{{ resourceKind }}</dd>
+          <dt class="text-xs font-medium text-text-secondary">Kind</dt>
+          <dd class="text-sm text-text-primary">{{ resourceKind }}</dd>
         </div>
         <div v-if="resourceData?.metadata?.uid">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">UID</dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono text-xs">{{ resourceData.metadata.uid }}</dd>
+          <dt class="text-xs font-medium text-text-secondary">UID</dt>
+          <dd class="text-sm text-text-primary font-mono text-xs">{{ resourceData.metadata.uid }}</dd>
         </div>
         <!-- Resource-specific fields -->
         <template v-for="field in getResourceSpecificFields()" :key="field.key">
           <div>
-            <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ field.label }}</dt>
-            <dd class="text-sm text-gray-900 dark:text-gray-100" :class="field.mono ? 'font-mono' : ''">{{ field.value }}</dd>
+            <dt class="text-xs font-medium text-text-secondary">{{ field.label }}</dt>
+            <dd class="text-sm text-text-primary" :class="field.mono ? 'font-mono' : ''">{{ field.value }}</dd>
           </div>
         </template>
       </dl>
     </div>
 
     <!-- Ingress Hosts -->
-    <div v-if="resourceKind === 'Ingress' && getGenericSpec(resourceData)?.rules?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Ingress' && getGenericSpec(resourceData)?.rules?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Hosts
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericSpec(resourceData).rules.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericSpec(resourceData).rules.length }})</span>
       </h3>
       <div class="space-y-3">
         <div v-for="(rule, index) in getGenericSpec(resourceData).rules" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <!-- Host header -->
               <div class="flex items-center gap-2 mb-2">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                <span class="status-badge status-badge-info">
                   {{ rule.host || '*' }}
                 </span>
-                <span v-if="rule.http?.paths?.length" class="text-xs text-gray-500 dark:text-gray-400">
+                <span v-if="rule.http?.paths?.length" class="text-xs text-text-secondary">
                   {{ rule.http.paths.length }} path{{ rule.http.paths.length !== 1 ? 's' : '' }}
                 </span>
               </div>
@@ -54,34 +54,34 @@
               <!-- Paths -->
               <div v-if="rule.http?.paths?.length" class="space-y-2">
                 <div v-for="(path, pathIndex) in rule.http.paths" :key="pathIndex"
-                     class="bg-gray-50 dark:bg-gray-900 rounded p-2">
+                     class="bg-surface-tertiary rounded p-2">
                   <div class="flex items-center gap-2 mb-1">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 font-mono">
+                    <span class="status-badge status-badge-success font-mono">
                       {{ path.path || '/' }}
                     </span>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+                    <span class="status-badge status-badge-secondary">
                       {{ path.pathType || 'Prefix' }}
                     </span>
                   </div>
                   
-                  <div class="text-xs text-gray-600 dark:text-gray-400">
+                  <div class="text-xs text-text-secondary">
                     <div class="flex items-center gap-1">
                       <span class="font-medium">→</span>
                       <span class="font-mono">{{ path.backend?.service?.name || path.backend?.resource?.name || 'Unknown' }}</span>
-                      <span v-if="path.backend?.service?.port" class="text-gray-500 dark:text-gray-500">
+                      <span v-if="path.backend?.service?.port" class="text-text-muted">
                         :{{ path.backend.service.port.number || path.backend.service.port.name }}
                       </span>
                     </div>
                   </div>
                   
                   <!-- Full URL display -->
-                  <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <div class="mt-1 text-xs text-text-secondary">
                     <span class="font-medium">URL:</span>
                     <a 
                       :href="getIngressUrl(rule.host, path.path)" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      class="font-mono ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline transition-colors"
+                      class="font-mono ml-1 text-accent-primary hover:text-accent-hover hover:underline transition-colors"
                       :title="`Open ${getIngressUrl(rule.host, path.path)} in new tab`"
                     >
                       {{ getIngressUrl(rule.host, path.path) }}
@@ -91,7 +91,7 @@
               </div>
               
               <!-- No paths case -->
-              <div v-else class="text-xs text-gray-500 dark:text-gray-400 italic">
+              <div v-else class="text-xs text-text-secondary italic">
                 No HTTP paths configured
               </div>
             </div>
@@ -112,18 +112,18 @@
     </div>
 
     <!-- Labels -->
-    <div v-if="resourceData?.metadata?.labels" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceData?.metadata?.labels" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Labels
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(resourceData.metadata.labels).length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(resourceData.metadata.labels).length }})</span>
       </h3>
       <div class="flex flex-wrap gap-2">
         <div v-for="(value, key) in resourceData.metadata.labels" :key="key"
              class="inline-flex items-center group">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-l-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700 border-r-0">
+          <span class="status-badge status-badge-info rounded-l-full border-r-0">
             {{ key }}
           </span>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-r-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700 border-l-0">
+          <span class="status-badge status-badge-info rounded-r-full border-l-0 opacity-80">
             {{ value }}
           </span>
           <button
@@ -140,41 +140,41 @@
     </div>
 
     <!-- Annotations -->
-    <div v-if="resourceData?.metadata?.annotations && Object.keys(resourceData.metadata.annotations).length > 0" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceData?.metadata?.annotations && Object.keys(resourceData.metadata.annotations).length > 0" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Annotations
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(resourceData.metadata.annotations).length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(resourceData.metadata.annotations).length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(value, key) in resourceData.metadata.annotations" :key="key"
-             class="bg-white dark:bg-gray-800 rounded border border-purple-200 dark:border-purple-700 p-3">
+             class="bg-surface-secondary rounded border border-purple-200 dark:border-purple-700 p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+                <span class="status-badge status-badge-secondary">
                   {{ key }}
                 </span>
                 <button
                   v-if="isLargeAnnotation(value)"
                   @click="toggleAnnotation(String(key))"
-                  class="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  class="text-xs text-text-secondary hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   {{ expandedAnnotations.has(String(key)) ? 'Collapse' : 'Expand' }}
                 </button>
               </div>
-              <div class="text-xs text-gray-900 dark:text-gray-100 font-mono">
+              <div class="text-xs text-text-primary font-mono">
                 <div v-if="!isLargeAnnotation(value)" class="break-all">
                   {{ value }}
                 </div>
                 <div v-else>
-                  <div v-if="expandedAnnotations.has(String(key))" class="break-all whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-2 rounded border max-h-60 overflow-y-auto">
+                  <div v-if="expandedAnnotations.has(String(key))" class="break-all whitespace-pre-wrap bg-surface-tertiary p-2 rounded border max-h-60 overflow-y-auto">
                     {{ formatAnnotationValue(value) }}
                   </div>
-                  <div v-else class="text-gray-500 dark:text-gray-400">
+                  <div v-else class="text-text-secondary">
                     {{ getTruncatedValue(value) }}
                     <button
                       @click="toggleAnnotation(String(key))"
-                      class="ml-1 text-blue-600 dark:text-blue-400 hover:underline"
+                      class="ml-1 text-accent-primary hover:underline"
                     >
                       Show more
                     </button>
@@ -208,36 +208,36 @@
     />
 
     <!-- Pod Tolerations -->
-    <div v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.tolerations?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.tolerations?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Tolerations
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericSpec(resourceData).tolerations.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericSpec(resourceData).tolerations.length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(toleration, index) in getGenericSpec(resourceData).tolerations" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-2">
-                <span v-if="toleration.key" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                <span v-if="toleration.key" class="status-badge status-badge-yellow">
                   {{ toleration.key }}
                 </span>
-                <span v-else class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300">
+                <span v-else class="status-badge status-badge-secondary">
                   No Key
                 </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                <span class="status-badge status-badge-info">
                   {{ toleration.effect || 'NoSchedule' }}
                 </span>
               </div>
               
               <div class="text-xs space-y-1">
-                <div v-if="toleration.operator" class="text-gray-600 dark:text-gray-400">
+                <div v-if="toleration.operator" class="text-text-secondary">
                   <span class="font-medium">Operator:</span> {{ toleration.operator }}
                 </div>
-                <div v-if="toleration.value" class="text-gray-600 dark:text-gray-400">
+                <div v-if="toleration.value" class="text-text-secondary">
                   <span class="font-medium">Value:</span> {{ toleration.value }}
                 </div>
-                <div v-if="toleration.tolerationSeconds !== undefined" class="text-gray-600 dark:text-gray-400">
+                <div v-if="toleration.tolerationSeconds !== undefined" class="text-text-secondary">
                   <span class="font-medium">Toleration Seconds:</span> {{ toleration.tolerationSeconds }}s
                 </div>
               </div>
@@ -281,15 +281,15 @@
     />
 
     <!-- CronJob-specific configuration -->
-    <div v-if="resourceKind === 'CronJob' && resourceData?.spec" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">CronJob Configuration</h3>
+    <div v-if="resourceKind === 'CronJob' && resourceData?.spec" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Configuration</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Schedule -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Schedule</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Schedule</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             <span class="font-mono">{{ resourceData.spec.schedule || '-' }}</span>
-            <span v-if="getGenericSpec(resourceData).schedule" class="text-xs text-gray-500 dark:text-gray-400 ml-2">
+            <span v-if="getGenericSpec(resourceData).schedule" class="text-xs text-text-secondary ml-2">
               ({{ getCronDescription(resourceData.spec.schedule) }})
             </span>
           </dd>
@@ -297,15 +297,15 @@
         
         <!-- Timezone -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Timezone</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Timezone</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.timeZone || 'UTC' }}
           </dd>
         </div>
         
         <!-- Concurrency Policy -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Concurrency Policy</dt>
+          <dt class="text-xs font-medium text-text-secondary">Concurrency Policy</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -318,7 +318,7 @@
         
         <!-- Suspend -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Suspended</dt>
+          <dt class="text-xs font-medium text-text-secondary">Suspended</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -333,16 +333,16 @@
         
         <!-- Successful Jobs History Limit -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Successful Jobs History</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Successful Jobs History</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.successfulJobsHistoryLimit ?? 3 }} jobs
           </dd>
         </div>
         
         <!-- Failed Jobs History Limit -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Failed Jobs History</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Failed Jobs History</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.failedJobsHistoryLimit ?? 1 }} jobs
           </dd>
         </div>
@@ -350,36 +350,36 @@
     </div>
 
     <!-- Job Configuration -->
-    <div v-if="resourceKind === 'Job' && resourceData?.spec" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Job Configuration</h3>
+    <div v-if="resourceKind === 'Job' && resourceData?.spec" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">Job Configuration</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Completions -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Completions</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Completions</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.completions || 1 }}
           </dd>
         </div>
         
         <!-- Parallelism -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Parallelism</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Parallelism</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.parallelism || 1 }}
           </dd>
         </div>
         
         <!-- Backoff Limit -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Backoff Limit</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Backoff Limit</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ resourceData.spec.backoffLimit ?? 6 }} retries
           </dd>
         </div>
         
         <!-- Completion Mode -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Completion Mode</dt>
+          <dt class="text-xs font-medium text-text-secondary">Completion Mode</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -394,7 +394,7 @@
         
         <!-- Manual Selector -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Manual Selector</dt>
+          <dt class="text-xs font-medium text-text-secondary">Manual Selector</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -409,7 +409,7 @@
         
         <!-- Pod Replacement Policy -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Pod Replacement Policy</dt>
+          <dt class="text-xs font-medium text-text-secondary">Pod Replacement Policy</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -423,49 +423,49 @@
     </div>
 
     <!-- Job Conditions -->
-    <div v-if="resourceKind === 'Job' && getGenericStatus(resourceData)?.conditions?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Job' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Job Conditions
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(condition, index) in getGenericStatus(resourceData).conditions" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span :class="[
                   'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                   condition.status === 'True' 
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    ? 'status-badge-success'
                     : condition.status === 'False' 
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                      ? 'status-badge-error'
+                      : 'status-badge-yellow'
                 ]">
                   {{ condition.type }}
                 </span>
                 <span :class="[
                   'text-xs px-1.5 py-0.5 rounded',
                   condition.status === 'True' 
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    ? 'status-badge-success opacity-75'
                     : condition.status === 'False' 
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      ? 'status-badge-error opacity-75'
                       : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
                 ]">
                   {{ condition.status }}
                 </span>
-                <span v-if="condition.lastTransitionTime" class="text-xs text-gray-500 dark:text-gray-400">
+                <span v-if="condition.lastTransitionTime" class="text-xs text-text-secondary">
                   {{ getRelativeTime(new Date().getTime() - new Date(condition.lastTransitionTime).getTime()) }} ago
                 </span>
               </div>
               <div class="text-xs space-y-1">
-                <div v-if="condition.reason" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.reason" class="text-text-secondary">
                   <span class="font-medium">Reason:</span> {{ condition.reason }}
                 </div>
-                <div v-if="condition.message" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.message" class="text-text-secondary">
                   <span class="font-medium">Message:</span> {{ condition.message }}
                 </div>
-                <div v-if="condition.lastProbeTime" class="text-gray-500 dark:text-gray-500">
+                <div v-if="condition.lastProbeTime" class="text-text-muted">
                   <span class="font-medium">Last Probe:</span> {{ new Date(condition.lastProbeTime).toLocaleString() }}
                 </div>
               </div>
@@ -487,49 +487,49 @@
     </div>
 
     <!-- PodDisruptionBudget Conditions -->
-    <div v-if="resourceKind === 'PodDisruptionBudget' && getGenericStatus(resourceData)?.conditions?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'PodDisruptionBudget' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Conditions
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(condition, index) in getGenericStatus(resourceData).conditions" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span :class="[
                   'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                   condition.status === 'True' 
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    ? 'status-badge-success'
                     : condition.status === 'False' 
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                      ? 'status-badge-error'
+                      : 'status-badge-yellow'
                 ]">
                   {{ condition.type }}
                 </span>
                 <span :class="[
                   'text-xs px-1.5 py-0.5 rounded',
                   condition.status === 'True' 
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    ? 'status-badge-success opacity-75'
                     : condition.status === 'False' 
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      ? 'status-badge-error opacity-75'
                       : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
                 ]">
                   {{ condition.status }}
                 </span>
-                <span v-if="condition.lastTransitionTime" class="text-xs text-gray-500 dark:text-gray-400">
+                <span v-if="condition.lastTransitionTime" class="text-xs text-text-secondary">
                   {{ getRelativeTime(new Date().getTime() - new Date(condition.lastTransitionTime).getTime()) }} ago
                 </span>
               </div>
               <div class="text-xs space-y-1">
-                <div v-if="condition.reason" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.reason" class="text-text-secondary">
                   <span class="font-medium">Reason:</span> {{ condition.reason }}
                 </div>
-                <div v-if="condition.message" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.message" class="text-text-secondary">
                   <span class="font-medium">Message:</span> {{ condition.message }}
                 </div>
-                <div v-if="condition.lastProbeTime" class="text-gray-500 dark:text-gray-500">
+                <div v-if="condition.lastProbeTime" class="text-text-muted">
                   <span class="font-medium">Last Probe:</span> {{ new Date(condition.lastProbeTime).toLocaleString() }}
                 </div>
               </div>
@@ -551,22 +551,22 @@
     </div>
 
     <!-- Node Addresses -->
-    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.addresses?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.addresses?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Addresses
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).addresses.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).addresses.length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(address, index) in getGenericStatus(resourceData).addresses" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                <span class="status-badge status-badge-info">
                   {{ address.type }}
                 </span>
               </div>
-              <div class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+              <div class="text-sm text-text-primary font-mono">
                 {{ address.address }}
               </div>
             </div>
@@ -587,10 +587,10 @@
     </div>
 
     <!-- Node Capacity -->
-    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.capacity" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.capacity" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Capacity
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).capacity).length }} resources)</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(getGenericStatus(resourceData).capacity).length }} resources)</span>
         <Tooltip content="Total node resources available, including system reserved resources" side="top">
           <span class="ml-1 inline-flex items-center">
             <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
@@ -601,7 +601,7 @@
       </h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div v-for="(value, key) in getGenericStatus(resourceData).capacity" :key="key">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          <dt class="text-xs font-medium text-text-secondary">
             {{ key }}
             <Tooltip v-if="key.startsWith('hugepages-')" :content="`Large memory pages (${key.split('-')[1]}) that reduce TLB misses and improve memory performance for memory-intensive applications`" side="top">
               <span class="ml-1 inline-flex items-center">
@@ -611,7 +611,7 @@
               </span>
             </Tooltip>
           </dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+          <dd class="text-sm text-text-primary font-mono">
             <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
             <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
             <span v-else>{{ value }}</span>
@@ -621,10 +621,10 @@
     </div>
 
     <!-- Node Allocatable -->
-    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.allocatable" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.allocatable" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Allocatable
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ Object.keys(getGenericStatus(resourceData).allocatable).length }} resources)</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(getGenericStatus(resourceData).allocatable).length }} resources)</span>
         <Tooltip content="Resources available for scheduling pods after system reservations (kubelet, kube-proxy, OS, etc.)" side="top">
           <span class="ml-1 inline-flex items-center">
             <svg class="w-3 h-3 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
@@ -635,7 +635,7 @@
       </h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div v-for="(value, key) in getGenericStatus(resourceData).allocatable" :key="key">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          <dt class="text-xs font-medium text-text-secondary">
             {{ key }}
             <Tooltip v-if="key.startsWith('hugepages-')" :content="`Large memory pages (${key.split('-')[1]}) that reduce TLB misses and improve memory performance for memory-intensive applications`" side="top">
               <span class="ml-1 inline-flex items-center">
@@ -645,7 +645,7 @@
               </span>
             </Tooltip>
           </dt>
-          <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">
+          <dd class="text-sm text-text-primary font-mono">
             <span v-if="key === 'memory'">{{ formatMemory(value) }}</span>
             <span v-else-if="key === 'ephemeral-storage'">{{ formatMemory(value) }}</span>
             <span v-else>{{ value }}</span>
@@ -655,49 +655,49 @@
     </div>
 
     <!-- Node Conditions -->
-    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.conditions?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">
         Conditions
-        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
+        <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
       <div class="space-y-2">
         <div v-for="(condition, index) in getGenericStatus(resourceData).conditions" :key="index"
-             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+             class="bg-surface-secondary rounded border border-border-primary p-3">
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span :class="[
                   'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                   condition.status === 'True' 
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    ? 'status-badge-success'
                     : condition.status === 'False' 
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                      ? 'status-badge-error'
+                      : 'status-badge-yellow'
                 ]">
                   {{ condition.type }}
                 </span>
                 <span :class="[
                   'text-xs px-1.5 py-0.5 rounded',
                   condition.status === 'True' 
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    ? 'status-badge-success opacity-75'
                     : condition.status === 'False' 
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      ? 'status-badge-error opacity-75'
                       : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
                 ]">
                   {{ condition.status }}
                 </span>
-                <span v-if="condition.lastTransitionTime" class="text-xs text-gray-500 dark:text-gray-400">
+                <span v-if="condition.lastTransitionTime" class="text-xs text-text-secondary">
                   {{ getRelativeTime(new Date().getTime() - new Date(condition.lastTransitionTime).getTime()) }} ago
                 </span>
               </div>
               <div class="text-xs space-y-1">
-                <div v-if="condition.reason" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.reason" class="text-text-secondary">
                   <span class="font-medium">Reason:</span> {{ condition.reason }}
                 </div>
-                <div v-if="condition.message" class="text-gray-600 dark:text-gray-400">
+                <div v-if="condition.message" class="text-text-secondary">
                   <span class="font-medium">Message:</span> {{ condition.message }}
                 </div>
-                <div v-if="condition.lastHeartbeatTime" class="text-gray-500 dark:text-gray-500">
+                <div v-if="condition.lastHeartbeatTime" class="text-text-muted">
                   <span class="font-medium">Last Heartbeat:</span> {{ new Date(condition.lastHeartbeatTime).toLocaleString() }}
                 </div>
               </div>
@@ -719,37 +719,37 @@
     </div>
 
     <!-- CronJob Status -->
-    <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">CronJob Status</h3>
+    <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="elevated-surface rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Status</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Last Schedule Time -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Last Schedule</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Last Schedule</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             <div v-if="getGenericStatus(resourceData).lastScheduleTime">
               {{ getRelativeTime(new Date().getTime() - new Date(getGenericStatus(resourceData).lastScheduleTime).getTime()) }} ago
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <div class="text-xs text-text-secondary mt-0.5">
                 {{ new Date(getGenericStatus(resourceData).lastScheduleTime).toLocaleString() }}
               </div>
             </div>
-            <span v-else class="text-gray-500 dark:text-gray-400">Never</span>
+            <span v-else class="text-text-secondary">Never</span>
           </dd>
         </div>
         
         <!-- Next Schedule Time -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Next Schedule</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Next Schedule</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             <div v-if="getGenericStatus(resourceData).lastSuccessfulTime">
-              <span class="text-gray-500 dark:text-gray-400">Calculated from schedule</span>
+              <span class="text-text-secondary">Calculated from schedule</span>
             </div>
-            <span v-else class="text-gray-500 dark:text-gray-400">-</span>
+            <span v-else class="text-text-secondary">-</span>
           </dd>
         </div>
         
         <!-- Active Jobs -->
         <div>
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Active Jobs</dt>
+          <dt class="text-xs font-medium text-text-secondary">Active Jobs</dt>
           <dd class="mt-1">
             <span :class="[
               'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -760,7 +760,7 @@
               {{ getGenericStatus(resourceData).active?.length || 0 }}
             </span>
             <div v-if="getGenericStatus(resourceData).active?.length" class="mt-1 space-y-1">
-              <div v-for="activeJob in getGenericStatus(resourceData).active" :key="activeJob.name" class="text-xs text-gray-600 dark:text-gray-400">
+              <div v-for="activeJob in getGenericStatus(resourceData).active" :key="activeJob.name" class="text-xs text-text-secondary">
                 → {{ activeJob.name }}
               </div>
             </div>
@@ -769,10 +769,10 @@
         
         <!-- Last Successful Time -->
         <div v-if="getGenericStatus(resourceData).lastSuccessfulTime">
-          <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Last Successful</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+          <dt class="text-xs font-medium text-text-secondary">Last Successful</dt>
+          <dd class="mt-1 text-sm text-text-primary">
             {{ getRelativeTime(new Date().getTime() - new Date(getGenericStatus(resourceData).lastSuccessfulTime).getTime()) }} ago
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <div class="text-xs text-text-secondary mt-0.5">
               {{ new Date(getGenericStatus(resourceData).lastSuccessfulTime).toLocaleString() }}
             </div>
           </dd>

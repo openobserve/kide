@@ -3,26 +3,26 @@
     <div class="relative">
       <div
         @click="toggleDropdown"
-        class="relative w-full pl-3 pr-10 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-        :class="{ 'ring-1 ring-blue-500 border-blue-500': isOpen }"
+        class="relative w-full pl-3 pr-10 py-2 text-left input-background rounded-md cursor-pointer focus:outline-none sm:text-sm"
+        :class="{ 'input-focus': isOpen }"
       >
         <span class="block truncate">
-          <span v-if="selectedNamespaces.length === 0" class="text-gray-400">
+          <span v-if="selectedNamespaces.length === 0" class="text-text-muted">
             Select namespaces
           </span>
-          <span v-else-if="isAllNamespacesSelected" class="font-medium text-blue-600 dark:text-blue-400">
+          <span v-else-if="isAllNamespacesSelected" class="font-medium text-accent-primary">
             All namespaces
           </span>
-          <span v-else-if="selectedNamespaces.length === 1" class="font-medium text-gray-900 dark:text-gray-100">
+          <span v-else-if="selectedNamespaces.length === 1" class="font-medium text-text-primary">
             {{ selectedNamespaces[0] }}
           </span>
-          <span v-else class="font-medium text-gray-900 dark:text-gray-100">
+          <span v-else class="font-medium text-text-primary">
             {{ selectedNamespaces.length }} namespaces selected
           </span>
         </span>
         <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
           <svg
-            class="w-5 h-5 text-gray-400 transition-transform duration-200"
+            class="w-5 h-5 text-text-muted transition-transform duration-200"
             :class="{ 'rotate-180': isOpen }"
             fill="none"
             stroke="currentColor"
@@ -40,11 +40,11 @@
         data-testid="dropdown-panel"
         role="listbox"
         aria-label="Namespace selection"
-        class="absolute z-50 mt-1 bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 dark:ring-gray-600 focus:outline-none sm:text-sm"
+        class="absolute z-50 mt-1 dropdown-background max-h-60 py-1 text-base focus:outline-none sm:text-sm"
         :style="{ minWidth: dropdownWidth, left: dropdownLeft, right: dropdownRight }"
       >
         <!-- Search input -->
-        <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-3 py-2 border-b border-border-primary">
           <input
             ref="searchInput"
             v-model="searchQuery"
@@ -59,12 +59,12 @@
             aria-autocomplete="list"
             aria-expanded="true"
             :aria-activedescendant="highlightedIndex >= 0 ? `namespace-option-${filteredNamespaces[highlightedIndex]}` : (highlightedIndex === -1 && !searchQuery ? 'all-namespaces-option' : '')"
-            class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            class="w-full px-2 py-1 text-sm input-background rounded focus:input-focus text-text-primary placeholder:text-text-muted"
           >
         </div>
 
         <!-- All namespaces special option -->
-        <div v-if="!searchQuery" class="border-b border-gray-200 dark:border-gray-700">
+        <div v-if="!searchQuery" class="border-b border-border-primary">
           <div
             @click="selectAllNamespaces"
             :ref="(el) => setOptionRef(el as HTMLElement, -1)"
@@ -72,8 +72,8 @@
             data-testid="all-namespaces-option"
             role="option"
             :aria-selected="isAllNamespacesSelected"
-            class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-b border-gray-100 dark:border-gray-700"
-            :class="{ 'bg-blue-50 dark:bg-blue-900/30': highlightedIndex === -1 }"
+            class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-surface-secondary border-b border-border-primary"
+            :class="{ 'selected-state': highlightedIndex === -1 }"
           >
             <div class="flex items-center">
               <input
@@ -81,13 +81,13 @@
                 :checked="isAllNamespacesSelected"
                 @click.stop
                 @change="selectAllNamespaces"
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+                class="h-4 w-4 text-accent-primary focus:ring-accent-primary input-background"
                 name="namespace-selection"
               >
-              <span class="ml-3 block font-medium text-blue-600 dark:text-blue-400">
+              <span class="ml-3 block font-medium text-accent-primary">
                 All namespaces
               </span>
-              <svg v-if="isAllNamespacesSelected" class="ml-auto w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg v-if="isAllNamespacesSelected" class="ml-auto w-4 h-4 text-accent-primary" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </div>
@@ -106,8 +106,8 @@
             :data-testid="`namespace-option-${namespace}`"
             role="option"
             :aria-selected="selectedNamespaces.includes(namespace)"
-            class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 dark:hover:bg-gray-700"
-            :class="{ 'bg-blue-50 dark:bg-blue-900/30': highlightedIndex === index }"
+            class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-surface-secondary"
+            :class="{ 'selected-state': highlightedIndex === index }"
           >
             <div class="flex items-center">
               <input
@@ -115,13 +115,13 @@
                 :checked="selectedNamespaces.includes(namespace)"
                 @click.stop
                 @change="selectNamespace(namespace)"
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+                class="h-4 w-4 text-accent-primary focus:ring-accent-primary input-background"
                 name="namespace-selection"
               >
-              <span class="ml-3 block font-normal truncate text-gray-900 dark:text-gray-100">
+              <span class="ml-3 block font-normal truncate text-text-primary">
                 {{ namespace }}
               </span>
-              <svg v-if="selectedNamespaces.includes(namespace)" class="ml-auto w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg v-if="selectedNamespaces.includes(namespace)" class="ml-auto w-4 h-4 text-accent-primary" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </div>
@@ -129,10 +129,10 @@
         </div>
 
         <!-- No namespaces message -->
-        <div v-if="filteredNamespaces.length === 0 && searchQuery" class="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">
+        <div v-if="filteredNamespaces.length === 0 && searchQuery" class="px-3 py-2 text-text-muted text-sm">
           No namespaces found matching "{{ searchQuery }}"
         </div>
-        <div v-else-if="namespaces.length === 0" class="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">
+        <div v-else-if="namespaces.length === 0" class="px-3 py-2 text-text-muted text-sm">
           No namespaces available
         </div>
       </div>

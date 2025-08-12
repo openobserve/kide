@@ -115,7 +115,7 @@ describe('ResourceNavigation', () => {
     // Category needs to be expanded first to show the selected resource
     await wrapper.find('[data-testid="category-header"]').trigger('click')
     
-    // The selected resource should have bg-blue-100 class according to the component
-    expect(wrapper.find('.bg-blue-100').exists()).toBe(true)
+    // The selected resource should have bg-blue-900/50 class according to the component
+    expect(wrapper.find('.bg-blue-900\\/50').exists()).toBe(true)
   })
 })

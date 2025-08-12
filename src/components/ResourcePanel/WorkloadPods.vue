@@ -4,7 +4,7 @@
     <div v-if="loading" class="flex items-center justify-center h-32">
       <div class="text-center">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Loading pods...</p>
+        <p class="text-sm text-text-secondary">Loading pods...</p>
       </div>
     </div>
 
@@ -16,7 +16,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        <p class="text-sm text-status-error">{{ error }}</p>
         <button 
           @click="refreshPods" 
           class="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
@@ -27,12 +27,12 @@
     </div>
 
     <!-- Workload Info Header -->
-    <div v-else-if="workloadName" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+    <div v-else-if="workloadName" class="elevated-surface rounded-lg p-4">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ resourceKind }}: {{ workloadName }}</h3>
+        <h3 class="text-sm font-semibold text-text-primary">{{ resourceKind }}: {{ workloadName }}</h3>
         <button 
           @click="refreshPods"
-          class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          class="p-1 text-gray-400 hover:text-text-secondary transition-colors"
           title="Refresh pods"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,24 +40,24 @@
           </svg>
         </button>
       </div>
-      <p class="text-xs text-gray-600 dark:text-gray-400">{{ pods.length }} pod{{ pods.length !== 1 ? 's' : '' }} managed by this {{ resourceKind.toLowerCase() }}</p>
+      <p class="text-xs text-text-secondary">{{ pods.length }} pod{{ pods.length !== 1 ? 's' : '' }} managed by this {{ resourceKind.toLowerCase() }}</p>
     </div>
 
     <!-- Pods Table -->
-    <div v-if="!loading && !error && pods.length > 0" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+    <div v-if="!loading && !error && pods.length > 0" class="bg-surface-primary rounded-lg border border-border-primary overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full bg-white dark:bg-gray-800" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
+        <table class="min-w-full bg-surface-primary" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
           <!-- Table Header -->
-          <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <thead class="elevated-surface border-b border-border-primary">
             <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
               <th
                 v-for="header in headerGroup.headers"
                 :key="header.id"
                 :colSpan="header.colSpan"
                 :style="{ width: header.getSize() + 'px' }"
-                class="px-3 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider relative select-none"
+                class="px-3 py-1 text-left text-xs font-medium text-text-secondary uppercase tracking-wider relative select-none"
                 :class="[
-                  header.column.getCanSort() ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 group' : '',
+                  header.column.getCanSort() ? 'cursor-pointer hover:text-text-primary group' : '',
                 ]"
                 @click="header.column.getToggleSortingHandler()?.($event)"
               >
@@ -69,19 +69,19 @@
                   <!-- Sort indicator -->
                   <div v-if="header.column.getCanSort()" class="w-5 h-5">
                     <svg v-if="header.column.getIsSorted() === 'asc'" 
-                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
+                         class="w-5 h-5 text-text-primary" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else-if="header.column.getIsSorted() === 'desc'" 
-                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
+                         class="w-5 h-5 text-text-primary" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else 
-                         class="w-5 h-5 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100" 
+                         class="w-5 h-5 text-text-muted opacity-0 group-hover:opacity-100" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -96,7 +96,7 @@
                   @touchstart="header.getResizeHandler()?.($event)"
                   class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500 transition-colors border-r-2 border-transparent hover:border-blue-500 active:bg-blue-600"
                   :class="[
-                    header.column.getIsResizing() ? 'bg-blue-500 border-blue-500' : 'bg-transparent hover:bg-blue-300 dark:hover:bg-blue-600'
+                    header.column.getIsResizing() ? 'bg-blue-500 border-blue-500' : 'bg-transparent hover:bg-accent-hover/20'
                   ]"
                 ></div>
               </th>
@@ -104,18 +104,18 @@
           </thead>
 
           <!-- Table Body -->
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="bg-surface-primary divide-y divide-border-primary">
             <tr
               v-for="row in table.getRowModel().rows"
               :key="row.id"
-              class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+              class="interactive-hover cursor-pointer transition-colors"
               @click="handleViewPod(row.original)"
             >
               <td
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
                 :style="{ width: cell.column.getSize() + 'px' }"
-                class="px-3 py-0.5 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-gray-600 dark:text-gray-400"
+                class="px-3 py-0.5 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-text-secondary"
               >
                 <FlexRender
                   :render="cell.column.columnDef.cell"
@@ -131,24 +131,24 @@
     <!-- Empty State -->
     <div v-else-if="!loading && !error && pods.length === 0" class="flex items-center justify-center h-32">
       <div class="text-center">
-        <div class="text-gray-400 dark:text-gray-500 mb-2">
+        <div class="text-text-muted mb-2">
           <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V6a2 2 0 012-2h2a2 2 0 012 2v1M6 7h.01M6 11h.01"/>
           </svg>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">No pods found for this {{ resourceKind.toLowerCase() }}</p>
+        <p class="text-sm text-text-secondary">No pods found for this {{ resourceKind.toLowerCase() }}</p>
       </div>
     </div>
 
     <!-- Not a Workload Resource -->
     <div v-else-if="!loading && !error && !workloadName" class="flex items-center justify-center h-32">
       <div class="text-center">
-        <div class="text-gray-400 dark:text-gray-500 mb-2">
+        <div class="text-text-muted mb-2">
           <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Pod details are only available for workload resources</p>
+        <p class="text-sm text-text-secondary">Pod details are only available for workload resources</p>
       </div>
     </div>
   </div>
@@ -212,7 +212,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ getValue }) => {
         const name = getValue() as string || 'Unknown'
         return h('div', {
-          class: 'text-sm text-gray-900 dark:text-gray-100 truncate',
+          class: 'text-sm text-text-primary truncate',
           title: name
         }, name)
       },
@@ -275,7 +275,7 @@ const columns = computed((): ColumnDef<any>[] => {
             ])
           ),
           h('span', {
-            class: 'text-xs text-gray-500 dark:text-gray-400 ml-1'
+            class: 'text-xs text-text-secondary ml-1'
           }, `${getReadyContainers(row.original)}/${getTotalContainers(row.original)}`)
         ])
       },
@@ -297,7 +297,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ row }) => {
         const restarts = getTotalRestarts(row.original)
         return h('div', {
-          class: 'text-sm text-gray-600 dark:text-gray-400'
+          class: 'text-sm text-text-secondary'
         }, restarts.toString())
       },
       size: savedSizes.restarts || 80,
@@ -313,12 +313,12 @@ const columns = computed((): ColumnDef<any>[] => {
         const nodeName = getValue() as string
         if (nodeName) {
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 truncate',
+            class: 'text-sm text-text-secondary truncate',
             title: nodeName
           }, nodeName)
         }
         return h('span', {
-          class: 'text-gray-400 dark:text-gray-500 text-sm'
+          class: 'text-text-muted text-sm'
         }, '-')
       },
       size: savedSizes.node || 120,
@@ -334,12 +334,12 @@ const columns = computed((): ColumnDef<any>[] => {
         const podIP = getValue() as string
         if (podIP) {
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono',
+            class: 'text-sm text-text-secondary font-mono',
             title: podIP
           }, podIP)
         }
         return h('span', {
-          class: 'text-gray-400 dark:text-gray-500 text-sm'
+          class: 'text-text-muted text-sm'
         }, '-')
       },
       size: savedSizes.podIP || 120,
@@ -355,7 +355,7 @@ const columns = computed((): ColumnDef<any>[] => {
         const timestamp = getValue() as string
         const age = getAge(timestamp)
         return h('div', {
-          class: 'text-sm text-gray-500 dark:text-gray-400',
+          class: 'text-sm text-text-secondary',
           title: timestamp ? new Date(timestamp).toLocaleString() : undefined
         }, age)
       },

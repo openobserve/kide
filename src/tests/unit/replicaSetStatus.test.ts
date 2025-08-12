@@ -16,7 +16,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Ready')
-    expect(getStatusClass(replicaSet)).toContain('bg-green-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-success')
   })
 
   it('should show NotReady when some replicas are not ready', () => {
@@ -31,7 +31,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('NotReady')
-    expect(getStatusClass(replicaSet)).toContain('bg-red-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-error')
   })
 
   it('should show NotReady when some replicas are not available', () => {
@@ -46,7 +46,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('NotReady')
-    expect(getStatusClass(replicaSet)).toContain('bg-red-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-error')
   })
 
   it('should show Scaling when replica count does not match desired', () => {
@@ -61,7 +61,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Scaling')
-    expect(getStatusClass(replicaSet)).toContain('bg-yellow-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-yellow')
   })
 
   it('should show Scaling when scaling down', () => {
@@ -76,7 +76,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Scaling')
-    expect(getStatusClass(replicaSet)).toContain('bg-yellow-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-yellow')
   })
 
   it('should show Failed when ReplicaFailure condition is present', () => {
@@ -99,7 +99,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Failed')
-    expect(getStatusClass(replicaSet)).toContain('bg-red-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-error')
   })
 
   it('should show Ready when desired replicas is 0 and actual is 0', () => {
@@ -114,7 +114,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Ready')
-    expect(getStatusClass(replicaSet)).toContain('bg-green-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-success')
   })
 
   it('should show Unknown when no status is available', () => {
@@ -124,7 +124,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Unknown')
-    expect(getStatusClass(replicaSet)).toContain('bg-gray-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-secondary')
   })
 
   it('should show Scaling when spec is missing (defaults to 0 desired)', () => {
@@ -138,7 +138,7 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Scaling') // defaults to 0 desired, so 3 actual != 0 desired
-    expect(getStatusClass(replicaSet)).toContain('bg-yellow-100') // Should be Scaling since replicas (3) != desired (0)
+    expect(getStatusClass(replicaSet)).toContain('status-badge-yellow') // Should be Scaling since replicas (3) != desired (0)
   })
 
   it('should handle ReplicaFailure condition with False status', () => {
@@ -159,6 +159,6 @@ describe('ReplicaSet Status Logic', () => {
     }
 
     expect(getStatusText(replicaSet)).toBe('Ready')
-    expect(getStatusClass(replicaSet)).toContain('bg-green-100')
+    expect(getStatusClass(replicaSet)).toContain('status-badge-success')
   })
 })

@@ -16,7 +16,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('Ready')
-    expect(getStatusClass(daemonSet)).toContain('bg-green-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-success')
   })
 
   it('should show NotReady when some pods are not ready', () => {
@@ -31,7 +31,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('NotReady')
-    expect(getStatusClass(daemonSet)).toContain('bg-red-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-error')
   })
 
   it('should show NotReady when pods are misscheduled', () => {
@@ -46,7 +46,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('NotReady')
-    expect(getStatusClass(daemonSet)).toContain('bg-red-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-error')
   })
 
   it('should show Updating during rolling update', () => {
@@ -62,7 +62,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('Updating')
-    expect(getStatusClass(daemonSet)).toContain('bg-yellow-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-yellow')
   })
 
   it('should show Failed when conditions indicate failure', () => {
@@ -85,7 +85,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('Failed')
-    expect(getStatusClass(daemonSet)).toContain('bg-red-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-error')
   })
 
   it('should show Unknown when no status is available', () => {
@@ -94,7 +94,7 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('Unknown')
-    expect(getStatusClass(daemonSet)).toContain('bg-gray-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-secondary')
   })
 
   it('should show Unknown when desiredNumberScheduled is 0', () => {
@@ -109,6 +109,6 @@ describe('DaemonSet Status Logic', () => {
     }
 
     expect(getStatusText(daemonSet)).toBe('Unknown')
-    expect(getStatusClass(daemonSet)).toContain('bg-gray-100')
+    expect(getStatusClass(daemonSet)).toContain('status-badge-secondary')
   })
 })

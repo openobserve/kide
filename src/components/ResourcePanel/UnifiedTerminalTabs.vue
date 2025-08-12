@@ -708,6 +708,6 @@ onUnmounted(() => {
 
 <style scoped>
 .dropdown-item:hover {
-  background-color: #f3f4f6 !important;
+  background-color: var(--color-surface-secondary);
 }
 </style>

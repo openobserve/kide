@@ -1,20 +1,20 @@
 <template>
-  <div class="flex-1 overflow-auto resource-table" 
+  <div class="flex-1 overflow-auto resource-table table-background" 
        @mouseenter="() => $emit('setMouseOverTable', true)" 
        @mouseleave="() => { $emit('setMouseOverTable', false); forceClearHoveredRow('table-exit'); }"
        @scroll="() => forceClearHoveredRow('scroll')">
-    <table class="min-w-full bg-white dark:bg-gray-800" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
+    <table class="min-w-full table-background" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
       <!-- Table Header -->
-      <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 sticky top-0 z-10 backdrop-blur-sm">
+      <thead class="table-header-background border-b border-border-primary sticky top-0 z-10 backdrop-blur-sm">
         <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
           <th
             v-for="header in headerGroup.headers"
             :key="header.id"
             :colSpan="header.colSpan"
             :style="{ width: header.getSize() + 'px' }"
-            class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider relative select-none"
+            class="px-3 py-2 text-left text-xs font-medium table-header-text uppercase tracking-wider relative select-none"
             :class="[
-              header.column.getCanSort() ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 group' : '',
+              header.column.getCanSort() ? 'cursor-pointer group' : '',
             ]"
             @click="header.column.getToggleSortingHandler()?.($event)"
             @mouseenter="$emit('clearHoveredRow', 'header-hover')"
@@ -27,19 +27,19 @@
               <!-- Sort indicator -->
               <div v-if="header.column.getCanSort()" class="w-5 h-5">
                 <svg v-if="header.column.getIsSorted() === 'asc'" 
-                     class="w-5 h-5 text-gray-800 dark:text-gray-200" 
+                     class="w-5 h-5 text-text-secondary" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
                 </svg>
                 <svg v-else-if="header.column.getIsSorted() === 'desc'" 
-                     class="w-5 h-5 text-gray-800 dark:text-gray-200" 
+                     class="w-5 h-5 text-text-secondary" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
                 <svg v-else 
-                     class="w-5 h-5 text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100" 
+                     class="w-5 h-5 text-text-muted opacity-0 group-hover:opacity-100" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -62,7 +62,7 @@
       </thead>
 
       <!-- Table Body -->
-      <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+      <tbody class="table-background divide-y divide-border-primary">
         <tr
           v-for="row in table.getRowModel().rows"
           :key="row.id"
@@ -71,16 +71,16 @@
           @mouseenter="$emit('setHoveredRow', row.original.metadata?.uid, `table-row-${row.index}`)"
           @mouseleave="$emit('clearHoveredRow', `table-row-${row.index}`)"
           :class="[
-            'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer',
-            selectedItem?.metadata?.uid === row.original.metadata?.uid ? 'bg-blue-50 dark:bg-blue-900/30' : '',
-            selectedItems.has(row.original.metadata?.uid || '') ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+            'table-row-background cursor-pointer',
+            selectedItem?.metadata?.uid === row.original.metadata?.uid ? 'selected-state' : '',
+            selectedItems.has(row.original.metadata?.uid || '') ? 'bg-blue-900/20' : ''
           ]"
         >
           <td
             v-for="cell in row.getVisibleCells()"
             :key="cell.id"
             :style="{ width: cell.column.getSize() + 'px' }"
-            class="px-3 py-1 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-gray-600 dark:text-gray-400"
+            class="px-3 py-1 whitespace-nowrap text-sm overflow-hidden text-ellipsis table-cell-text"
             :data-column-id="cell.column.id"
           >
             <FlexRender
@@ -97,7 +97,7 @@
   <Teleport to="body">
     <div
       v-if="tooltipState.show"
-      class="fixed z-[9999] px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-700 rounded border shadow-lg pointer-events-none"
+      class="fixed z-[9999] px-2 py-1 text-xs text-white bg-surface-secondary rounded border shadow-lg pointer-events-none"
       :style="{
         left: tooltipState.x + 'px',
         top: tooltipState.y + 'px',
@@ -310,7 +310,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           'data-resource-name': name
         }, [
           h('div', { 
-            class: 'truncate min-w-0 text-gray-600 dark:text-gray-400',
+            class: 'truncate min-w-0 table-cell-text',
             title: name
           }, name),
           // Hover buttons positioned floating on the right side above text
@@ -350,7 +350,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             }
           }, namespace)
         }
-        return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+        return h('span', { class: 'text-text-muted text-xs' }, '-')
       },
       size: savedSizes.namespace || 120,
       minSize: 50,
@@ -373,7 +373,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
               'text-xs font-medium',
               succeeded > 0 
                 ? 'text-green-600 dark:text-green-400' 
-                : 'text-gray-500 dark:text-gray-400'
+                : 'text-text-muted'
             ]
           }, succeeded.toString())
         },
@@ -391,11 +391,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const succeeded = getGenericStatus(row.original)?.succeeded || 0
           if (completions) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400',
+              class: 'text-xs table-cell-text',
               title: `${succeeded} of ${completions} completions`
             }, `${succeeded}/${completions}`)
           }
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.completions || 90,
         minSize: 70,
@@ -410,7 +410,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const parallelism = getGenericSpec(row.original)?.parallelism
           if (parallelism !== undefined) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400'
+              class: 'text-xs table-cell-text'
             }, parallelism.toString())
           }
           return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '1')
@@ -444,11 +444,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             const duration = getJobDuration(durationMs)
             
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400',
+              class: 'text-xs table-cell-text',
               title: completionTime ? 'Completed' : 'Running'
             }, duration)
           }
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.duration || 80,
         minSize: 60,
@@ -489,11 +489,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const schedule = getGenericSpec(row.original)?.schedule
           if (schedule) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400 font-mono',
+              class: 'text-xs table-cell-text font-mono',
               title: `Schedule: ${schedule}`
             }, schedule)
           }
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.schedule || 120,
         minSize: 80,
@@ -508,7 +508,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const timezone = getGenericSpec(row.original)?.timeZone
           if (timezone) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400',
+              class: 'text-xs table-cell-text',
               title: `Timezone: ${timezone}`
             }, timezone)
           }
@@ -550,7 +550,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
               'text-xs font-medium',
               activeJobs > 0 
                 ? 'text-green-600 dark:text-green-400' 
-                : 'text-gray-500 dark:text-gray-400'
+                : 'text-text-muted'
             ]
           }, activeJobs.toString())
         },
@@ -568,7 +568,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           if (lastScheduleTime) {
             const age = props.getAge(lastScheduleTime)
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400',
+              class: 'text-xs table-cell-text',
               title: new Date(lastScheduleTime).toLocaleString()
             }, `${age} ago`)
           }
@@ -605,7 +605,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         header: 'Restarts',
         accessorFn: (row) => props.getTotalRestartCount(row),
         cell: ({ row }) => h('span', {
-          class: 'text-xs text-gray-600 dark:text-gray-400'
+          class: 'text-xs table-cell-text'
         }, props.getTotalRestartCount(row.original).toString()),
         size: savedSizes.restarts || 80,
         minSize: 50,
@@ -620,11 +620,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const controlledBy = props.getControlledBy(row.original)
           if (controlledBy) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+              class: 'text-xs table-cell-text truncate max-w-full',
               title: controlledBy
             }, controlledBy)
           }
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.controlled_by || 140,
         minSize: 50,
@@ -640,11 +640,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           const nodeName = (getGenericSpec(row.original) as any)?.nodeName
           if (nodeName) {
             return h('div', {
-              class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+              class: 'text-xs table-cell-text truncate max-w-full',
               title: nodeName
             }, nodeName)
           }
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.node || 120,
         minSize: 50,
@@ -772,7 +772,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const desired = getGenericSpec(row.original)?.replicas || 0
           return h('div', {
-            class: 'text-xs text-gray-600 dark:text-gray-400'
+            class: 'text-xs table-cell-text'
           }, desired.toString())
         },
         size: savedSizes.desired || 60,
@@ -918,7 +918,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const desired = getGenericSpec(row.original)?.replicas || 0
           return h('div', {
-            class: 'text-xs text-gray-600 dark:text-gray-400'
+            class: 'text-xs table-cell-text'
           }, desired.toString())
         },
         size: savedSizes.desired || 60,
@@ -960,10 +960,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const clusterIP = getGenericSpec(row.original)?.clusterIP
           if (!clusterIP || clusterIP === 'None') {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            class: 'text-xs font-mono table-cell-text truncate max-w-full',
             title: clusterIP
           }, clusterIP)
         },
@@ -999,7 +999,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           // Show external IPs if specified
           if (externalIPs.length > 0) {
             return h('div', {
-              class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+              class: 'text-xs font-mono table-cell-text truncate max-w-full',
               title: externalIPs.join(', ')
             }, externalIPs.length > 1 ? `${externalIPs[0]} +${externalIPs.length - 1}` : externalIPs[0])
           }
@@ -1009,7 +1009,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             const ips = loadBalancerIPs.map((ing: any) => ing.ip || ing.hostname).filter(Boolean)
             if (ips.length > 0) {
               return h('div', {
-                class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+                class: 'text-xs font-mono table-cell-text truncate max-w-full',
                 title: ips.join(', ')
               }, ips.length > 1 ? `${ips[0]} +${ips.length - 1}` : ips[0])
             }
@@ -1023,7 +1023,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             }, 'Pending')
           }
           
-          return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          return h('span', { class: 'text-text-muted text-xs' }, '-')
         },
         size: savedSizes.externalIP || 120,
         minSize: 80,
@@ -1042,7 +1042,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const ports = getGenericSpec(row.original)?.ports || []
           if (ports.length === 0) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           
           const portStrings = ports.map((port: any) => {
@@ -1063,7 +1063,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             : portStrings.join(', ')
           
           return h('div', {
-            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            class: 'text-xs font-mono table-cell-text truncate max-w-full',
             title: portStrings.join(', ')
           }, displayText)
         },
@@ -1129,7 +1129,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           // EndpointSlice ports are at the top level
           const ports = row.original.endpoint_slice?.ports || []
           if (ports.length === 0) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           
           // Show just the port numbers, similar to kubectl output
@@ -1142,7 +1142,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             : portStrings.join(',')
           
           return h('div', {
-            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            class: 'text-xs font-mono table-cell-text truncate max-w-full',
             title: `Ports: ${portStrings.join(', ')}`
           }, displayText)
         },
@@ -1168,7 +1168,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const endpoints = row.original.endpoint_slice?.endpoints || []
           if (endpoints.length === 0) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           
           // Extract all IP addresses from endpoints, similar to kubectl output
@@ -1180,7 +1180,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
           })
           
           if (allAddresses.length === 0) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           
           // Display addresses like kubectl: "10.2.119.219,10.2.136.69"
@@ -1189,7 +1189,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             : allAddresses.join(',')
           
           return h('div', {
-            class: 'text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-full',
+            class: 'text-xs font-mono table-cell-text truncate max-w-full',
             title: `Endpoints: ${allAddresses.join(', ')}`
           }, displayText)
         },
@@ -1209,7 +1209,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const currentHealthy = getGenericStatus(row.original)?.currentHealthy || 0
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400'
+            class: 'text-sm table-cell-text'
           }, currentHealthy.toString())
         },
         size: savedSizes.currentHealthy || 90,
@@ -1224,7 +1224,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const desiredHealthy = getGenericStatus(row.original)?.desiredHealthy || 0
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400'
+            class: 'text-sm table-cell-text'
           }, desiredHealthy.toString())
         },
         size: savedSizes.desiredHealthy || 100,
@@ -1239,7 +1239,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const disruptionsAllowed = getGenericStatus(row.original)?.disruptionsAllowed || 0
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400'
+            class: 'text-sm table-cell-text'
           }, disruptionsAllowed.toString())
         },
         size: savedSizes.disruptionsAllowed || 120,
@@ -1254,7 +1254,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const expectedPods = getGenericStatus(row.original)?.expectedPods || 0
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400'
+            class: 'text-sm table-cell-text'
           }, expectedPods.toString())
         },
         size: savedSizes.expectedPods || 100,
@@ -1273,10 +1273,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const storage = getGenericStatus(row.original)?.capacity?.storage
           if (!storage) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, storage)
         },
         size: savedSizes.capacity || 80,
@@ -1291,7 +1291,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const storageClass = getGenericSpec(row.original)?.storageClassName || 'default'
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400',
+            class: 'text-sm table-cell-text',
             title: storageClass
           }, storageClass)
         },
@@ -1315,7 +1315,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const labels = row.original.metadata?.labels
           if (!labels || Object.keys(labels).length === 0) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           
           const labelCount = Object.keys(labels).length
@@ -1329,7 +1329,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             : labelText
           
           return h('div', {
-            class: 'text-xs text-gray-600 dark:text-gray-400 truncate max-w-full',
+            class: 'text-xs table-cell-text truncate max-w-full',
             title: `Labels (${labelCount}): ${Object.entries(labels).map(([k, v]) => `${k}=${v}`).join(', ')}`
           }, displayText)
         },
@@ -1349,10 +1349,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const cpu = getGenericStatus(row.original)?.capacity?.cpu
           if (!cpu) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, cpu)
         },
         size: savedSizes.cpu || 80,
@@ -1384,11 +1384,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const memory = getGenericStatus(row.original)?.capacity?.memory
           if (!memory) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           const formattedMemory = formatMemory(memory)
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, formattedMemory)
         },
         size: savedSizes.memory || 100,
@@ -1403,10 +1403,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const allocatableCpu = getGenericStatus(row.original)?.allocatable?.cpu
           if (!allocatableCpu) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, allocatableCpu)
         },
         size: savedSizes['allocatable-cpu'] || 90,
@@ -1438,11 +1438,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const memory = getGenericStatus(row.original)?.allocatable?.memory
           if (!memory) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           const formattedMemory = formatMemory(memory)
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, formattedMemory)
         },
         size: savedSizes['allocatable-memory'] || 120,
@@ -1460,10 +1460,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const pods = getGenericStatus(row.original)?.allocatable?.pods
           if (!pods) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, pods)
         },
         size: savedSizes['allocatable-pods'] || 100,
@@ -1478,10 +1478,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const architecture = getGenericStatus(row.original)?.nodeInfo?.architecture
           if (!architecture) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400'
+            class: 'text-sm table-cell-text'
           }, architecture)
         },
         size: savedSizes.architecture || 90,
@@ -1496,10 +1496,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const osImage = getGenericStatus(row.original)?.nodeInfo?.osImage
           if (!osImage) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 truncate',
+            class: 'text-sm table-cell-text truncate',
             title: osImage
           }, osImage)
         },
@@ -1515,10 +1515,10 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         cell: ({ row }) => {
           const kubeletVersion = getGenericStatus(row.original)?.nodeInfo?.kubeletVersion
           if (!kubeletVersion) {
-            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+            return h('span', { class: 'text-text-muted text-xs' }, '-')
           }
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+            class: 'text-sm table-cell-text font-mono'
           }, kubeletVersion)
         },
         size: savedSizes.kubeletVersion || 120,
@@ -1563,7 +1563,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         const timestamp = getValue() as string
         const age = props.getAge(timestamp)
         return h('div', {
-          class: 'truncate max-w-full text-gray-500 dark:text-gray-400',
+          class: 'truncate max-w-full text-text-muted',
           title: timestamp ? new Date(timestamp).toLocaleString() : undefined
         }, age)
       },

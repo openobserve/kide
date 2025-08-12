@@ -133,7 +133,7 @@ describe('Panel Resizing and Maximization', () => {
     it('should render panel when open', async () => {
       await nextTick()
       
-      const panel = wrapper.find('.flex-none.bg-white')
+      const panel = wrapper.find('.flex-none.panel-background')
       expect(panel.exists()).toBe(true)
     })
 
@@ -141,7 +141,7 @@ describe('Panel Resizing and Maximization', () => {
       await wrapper.setProps({ isOpen: false })
       await nextTick()
       
-      const panel = wrapper.find('.flex-none.bg-white')
+      const panel = wrapper.find('.flex-none.panel-background')
       expect(panel.exists()).toBe(false)
     })
 
@@ -176,7 +176,7 @@ describe('Panel Resizing and Maximization', () => {
       wrapper.vm.isMaximized = false
       await nextTick()
       
-      const panel = wrapper.find('.flex-none.bg-white')
+      const panel = wrapper.find('.flex-none.panel-background')
       expect(panel.attributes('style')).toContain('height: 500px')
     })
 
@@ -184,7 +184,7 @@ describe('Panel Resizing and Maximization', () => {
       wrapper.vm.isMaximized = true
       await nextTick()
       
-      const panel = wrapper.find('.flex-none.bg-white')
+      const panel = wrapper.find('.flex-none.panel-background')
       const style = panel.attributes('style')
       expect(style).toContain('height: 100vh')
     })

@@ -4,7 +4,7 @@
     operation="load"
     :on-retry="handleRetry"
   >
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow h-full flex flex-col relative">
+    <div class="panel-background rounded-lg shadow h-full flex flex-col relative">
       <!-- Resource Details Panel -->
       <ResourcePanel 
         ref="resourcePanelRef"
@@ -16,10 +16,10 @@
       />
     
     <!-- Header -->
-    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+    <div class="px-4 py-2 border-b border-border-primary">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h1 class="text-lg font-semibold text-text-primary">
             {{ resource?.name || 'Unknown Resource' }}
           </h1>
         </div>
@@ -48,16 +48,16 @@
                 data-lpignore="true"
                 readonly
                 onfocus="this.removeAttribute('readonly');"
-                class="w-full pl-3 pr-10 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-200 dark:placeholder-gray-400 sm:text-sm"
+                class="w-full pl-3 pr-10 py-2 text-left form-input border border-border-primary rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500  sm:text-sm"
               >
               <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
             <!-- Filter results indicator -->
-            <div v-if="filterText && filteredItems.length !== items.length" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <div v-if="filterText && filteredItems.length !== items.length" class="mt-1 text-xs text-text-secondary">
               {{ filteredItems.length }} of {{ items.length }} resources
             </div>
           </div>
@@ -93,20 +93,20 @@
       <div v-else-if="loading && items.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p class="text-gray-600 dark:text-gray-400">Loading {{ resource?.name.toLowerCase() || 'resources' }}...</p>
+          <p class="text-text-secondary">Loading {{ resource?.name.toLowerCase() || 'resources' }}...</p>
         </div>
       </div>
 
       <!-- Empty State -->
       <div v-else-if="items.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center">
-          <div class="text-gray-400 dark:text-gray-500 mb-4">
+          <div class="text-text-muted mb-4">
             <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V6a2 2 0 012-2h2a2 2 0 012 2v1M6 7h.01M6 11h.01" />
             </svg>
           </div>
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No {{ resource?.name || 'Resources' }} found</h3>
-          <p class="text-gray-600 dark:text-gray-400">There are no {{ resource?.name.toLowerCase() || 'resources' }} in the current context.</p>
+          <h3 class="text-lg font-medium text-text-primary mb-2">No {{ resource?.name || 'Resources' }} found</h3>
+          <p class="text-text-secondary">There are no {{ resource?.name.toLowerCase() || 'resources' }} in the current context.</p>
         </div>
       </div>
 
@@ -114,20 +114,20 @@
         <!-- Error Banner (when we have data but also errors) -->
         <div 
           v-if="(error || watchError) && items.length > 0" 
-          class="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 p-3"
+          class="bg-status-warning/10 border-b border-status-warning/30 p-3"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center">
-              <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-status-warning mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              <span class="text-sm text-yellow-800 dark:text-yellow-200">
+              <span class="text-sm text-status-warning">
                 {{ watchError || error }}
               </span>
             </div>
             <button 
               @click="handleRetry"
-              class="text-sm text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 underline"
+              class="text-sm text-status-warning hover:opacity-80 underline"
             >
               Retry
             </button>
@@ -498,7 +498,7 @@ async function deleteResourceInternal(item: K8sListItem, shouldEmitDeleted = tru
 }
 
 
-// Helper functions are now provided by composables"}, {"old_string": "            <div v-if=\"filterText && filteredItems.length !== items.length\" class=\"mt-1 text-xs text-gray-500 dark:text-gray-400\">\n              {{ filteredItems.length }} of {{ items.length }} resources\n            </div>", "new_string": "            <div v-if=\"debouncedFilterText && filteredItems.length !== items.length\" class=\"mt-1 text-xs text-gray-500 dark:text-gray-400\">\n              {{ filteredItems.length }} of {{ items.length }} resources\n            </div>"}, {"old_string": "              <p class=\"text-gray-600\">No resources match \"{{ filterText }}\". Try a different search term.</p>", "new_string": "              <p class=\"text-gray-600\">No resources match \"{{ debouncedFilterText }}\". Try a different search term.</p>"}]
+// Helper functions are now provided by composables"}, {"old_string": "            <div v-if=\"filterText && filteredItems.length !== items.length\" class=\"mt-1 text-xs text-text-secondary\">\n              {{ filteredItems.length }} of {{ items.length }} resources\n            </div>", "new_string": "            <div v-if=\"debouncedFilterText && filteredItems.length !== items.length\" class=\"mt-1 text-xs text-text-secondary\">\n              {{ filteredItems.length }} of {{ items.length }} resources\n            </div>"}, {"old_string": "              <p class=\"text-gray-600\">No resources match \"{{ filterText }}\". Try a different search term.</p>", "new_string": "              <p class=\"text-gray-600\">No resources match \"{{ debouncedFilterText }}\". Try a different search term.</p>"}]
 
 function handleRetry(): void {
   emit('retry')

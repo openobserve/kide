@@ -1,12 +1,12 @@
 <template>
   <div 
     ref="navigationRef"
-    class="bg-white dark:bg-gray-800 shadow-lg h-screen flex flex-col border-r border-gray-200 dark:border-gray-700 relative"
+    class="navigation-background shadow-lg h-screen flex flex-col border-r border-border-primary relative"
     :style="{ width: navigationWidth + 'px' }"
   >
 
     <!-- Navigation Tree -->
-    <div class="flex-1 overflow-y-scroll bg-white dark:bg-gray-800">
+    <div class="flex-1 overflow-y-scroll navigation-background dark-scrollbar">
       <div class="py-0.5">
         <div v-for="category in categories" :key="category.name" class="mb-0">
           <!-- Category Header -->
@@ -36,16 +36,16 @@
           </div>
           
           <!-- Category Resources -->
-          <div v-show="expandedCategories.has(category.name)" class="ml-1 border-l border-gray-100 dark:border-gray-700">
+          <div v-show="expandedCategories.has(category.name)" class="ml-1 border-l border-border-primary">
             <div v-for="resource in category.resources" :key="resource.name" class="relative">
               <button
                 @click="$emit('select-resource', resource)"
                 data-testid="resource-item"
                 :class="[
-                  'w-full text-left pl-3 pr-2 py-1 text-sm transition-all duration-150 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-l-2 border-transparent hover:border-blue-200 dark:hover:border-blue-700 group',
+                  'w-full text-left pl-3 pr-2 py-1 text-sm transition-all duration-150 hover:bg-surface-secondary border-l-2 border-transparent hover:border-blue-500 group',
                   selectedResource?.name === resource.name
-                    ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-200 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'bg-blue-900/50 text-blue-300 border-blue-500 shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
                 ]"
                 :title="resource.description"
               >
@@ -55,7 +55,7 @@
                     <div class="flex-shrink-0">
                       <ResourceIcons :kind="resource.kind" 
                                    class="w-3 h-3"
-                                   :class="selectedResource?.name === resource.name ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'" />
+                                   :class="selectedResource?.name === resource.name ? 'text-blue-400' : 'text-text-muted'" />
                     </div>
                     <span>{{ resource.name }}</span>
                   </div>
@@ -65,14 +65,14 @@
                     <span :class="[
                       'inline-flex items-center px-0.5 py-0 rounded text-xs',
                       resource.namespaced 
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                        : 'bg-purple-100 text-purple-700 border border-purple-200'
+                        ? 'bg-blue-900/30 text-status-info border border-blue-600' 
+                        : 'bg-purple-900/30 text-purple-400 border border-purple-600'
                     ]">
                       {{ resource.namespaced ? 'NS' : 'CL' }}
                     </span>
                     
                     <!-- API Version -->
-                    <span class="text-xs text-gray-400 font-mono">
+                    <span class="text-xs text-text-muted font-mono">
                       {{ getApiVersionShort(resource.apiVersion) }}
                     </span>
                   </div>
@@ -85,7 +85,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
+    <div class="border-t border-border-primary secondary-background px-4 py-3">
       <div class="flex items-center justify-between text-xs text-gray-500">
         <span>{{ getTotalResourcesCount() }} resources</span>
         <span>{{ getCurrentTime() }}</span>
@@ -207,67 +207,67 @@ function getApiVersionShort(apiVersion: string): string {
 // Color mapping for different categories
 const categoryColors = {
   'Commonly used': {
-    background: 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30',
-    text: 'text-amber-800 dark:text-amber-200',
-    icon: 'text-amber-600 dark:text-amber-400',
-    count: 'text-amber-700 dark:text-amber-300'
+    background: 'category-amber',
+    text: 'category-amber-text',
+    icon: 'category-amber-icon',
+    count: 'category-amber-count'
   },
   'Workloads': {
-    background: 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30',
-    text: 'text-blue-700 dark:text-blue-300',
-    icon: 'text-blue-500 dark:text-blue-400',
-    count: 'text-blue-600 dark:text-blue-400'
+    background: 'category-blue',
+    text: 'category-blue-text',
+    icon: 'category-blue-icon',
+    count: 'category-blue-count'
   },
   'Services & Networking': {
-    background: 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30',
-    text: 'text-green-700 dark:text-green-300',
-    icon: 'text-green-500 dark:text-green-400',
-    count: 'text-green-600 dark:text-green-400'
+    background: 'category-green',
+    text: 'category-green-text',
+    icon: 'category-green-icon',
+    count: 'category-green-count'
   },
   'Configuration': {
-    background: 'bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30',
-    text: 'text-purple-700 dark:text-purple-300',
-    icon: 'text-purple-500 dark:text-purple-400',
-    count: 'text-purple-600 dark:text-purple-400'
+    background: 'category-purple',
+    text: 'category-purple-text',
+    icon: 'category-purple-icon',
+    count: 'category-purple-count'
   },
   'Storage': {
-    background: 'bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30',
-    text: 'text-cyan-700 dark:text-cyan-300',
-    icon: 'text-cyan-500 dark:text-cyan-400',
-    count: 'text-cyan-600 dark:text-cyan-400'
+    background: 'category-cyan',
+    text: 'category-cyan-text',
+    icon: 'category-cyan-icon',
+    count: 'category-cyan-count'
   },
   'Cluster Administration': {
-    background: 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30',
-    text: 'text-orange-700 dark:text-orange-300',
-    icon: 'text-orange-500 dark:text-orange-400',
-    count: 'text-orange-600 dark:text-orange-400'
+    background: 'category-orange',
+    text: 'category-orange-text',
+    icon: 'category-orange-icon',
+    count: 'category-orange-count'
   },
   'Security & Access Control': {
-    background: 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30',
-    text: 'text-red-700 dark:text-red-300',
-    icon: 'text-red-500 dark:text-red-400',
-    count: 'text-red-600 dark:text-red-400'
+    background: 'category-red',
+    text: 'category-red-text',
+    icon: 'category-red-icon',
+    count: 'category-red-count'
   },
   'Scaling': {
-    background: 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30',
-    text: 'text-indigo-700 dark:text-indigo-300',
-    icon: 'text-indigo-500 dark:text-indigo-400',
-    count: 'text-indigo-600 dark:text-indigo-400'
+    background: 'category-indigo',
+    text: 'category-indigo-text',
+    icon: 'category-indigo-icon',
+    count: 'category-indigo-count'
   },
   'Custom Resources': {
-    background: 'bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30',
-    text: 'text-teal-700 dark:text-teal-300',
-    icon: 'text-teal-500 dark:text-teal-400',
-    count: 'text-teal-600 dark:text-teal-400'
+    background: 'category-teal',
+    text: 'category-teal-text',
+    icon: 'category-teal-icon',
+    count: 'category-teal-count'
   }
 } as const
 
 // Fallback colors for unknown categories
 const fallbackColors = {
-  background: 'bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/30',
-  text: 'text-gray-700 dark:text-gray-300',
-  icon: 'text-gray-500 dark:text-gray-400',
-  count: 'text-gray-600 dark:text-gray-400'
+  background: 'category-gray',
+  text: 'category-gray-text',
+  icon: 'category-gray-icon',
+  count: 'category-gray-count'
 }
 
 function getCategoryColorClasses(categoryName: string): string {
@@ -363,19 +363,7 @@ function startResize(event: MouseEvent): void {
   background: #a0aec0;
 }
 
-/* Dark mode scrollbar */
-.dark .overflow-y-scroll::-webkit-scrollbar-track {
-  background: #374151;
-}
-
-.dark .overflow-y-scroll::-webkit-scrollbar-thumb {
-  background: #6b7280;
-  border-radius: 4px;
-}
-
-.dark .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
+/* Dark mode scrollbar - now handled by .dark-scrollbar class in style.css */
 
 /* selection animation */
 .group:hover .border-l-2 {
