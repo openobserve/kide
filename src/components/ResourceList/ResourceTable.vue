@@ -25,21 +25,21 @@
                 :props="header.getContext()"
               />
               <!-- Sort indicator -->
-              <div v-if="header.column.getCanSort()" class="w-3 h-3">
+              <div v-if="header.column.getCanSort()" class="w-5 h-5">
                 <svg v-if="header.column.getIsSorted() === 'asc'" 
-                     class="w-3 h-3 text-gray-500" 
+                     class="w-5 h-5 text-gray-800 dark:text-gray-200" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
                 </svg>
                 <svg v-else-if="header.column.getIsSorted() === 'desc'" 
-                     class="w-3 h-3 text-gray-500" 
+                     class="w-5 h-5 text-gray-800 dark:text-gray-200" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
                 <svg v-else 
-                     class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" 
+                     class="w-5 h-5 text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100" 
                      fill="currentColor" 
                      viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -209,6 +209,66 @@ function hideTooltip() {
   tooltipState.value.show = false
 }
 
+// Generate enhanced tooltip content for containers
+function getContainerTooltipLines(container: any, isInit = false): string[] {
+  const lines = []
+  
+  // Container name
+  lines.push(isInit ? `Init: ${container.name || 'Unknown'}` : container.name || 'Unknown')
+  
+  // Status
+  lines.push(`Status: ${props.getContainerStatusText(container) || 'Unknown'}`)
+  
+  // Container ID if available
+  if (container.containerID) {
+    const shortId = container.containerID.replace(/^docker:\/\/|^containerd:\/\//, '').substring(0, 12)
+    lines.push(`ID: ${shortId}`)
+  }
+  
+  // State-specific information
+  if (container.state?.running?.startedAt) {
+    lines.push(`Started: ${props.getAge(container.state.running.startedAt)} ago`)
+  } else if (container.state?.terminated) {
+    const terminated = container.state.terminated
+    
+    // Exit code
+    if (terminated.exitCode !== undefined) {
+      lines.push(`Exit Code: ${terminated.exitCode}`)
+    }
+    
+    // Reason
+    if (terminated.reason) {
+      lines.push(`Reason: ${terminated.reason}`)
+    }
+    
+    // Started at
+    if (terminated.startedAt) {
+      lines.push(`Started: ${props.getAge(terminated.startedAt)} ago`)
+    }
+    
+    // Finished at
+    if (terminated.finishedAt) {
+      lines.push(`Finished: ${props.getAge(terminated.finishedAt)} ago`)
+    }
+    
+    // Container ID
+    if (terminated.containerID) {
+      const shortId = terminated.containerID.replace(/^docker:\/\/|^containerd:\/\//, '').substring(0, 12)
+      lines.push(`Container ID: ${shortId}`)
+    }
+  } else if (container.state?.waiting) {
+    const waiting = container.state.waiting
+    if (waiting.reason) {
+      lines.push(`Reason: ${waiting.reason}`)
+    }
+    if (waiting.message) {
+      lines.push(`Message: ${waiting.message}`)
+    }
+  }
+  
+  return lines
+}
+
 
 // Define columns
 const columns = computed((): ColumnDef<K8sListItem>[] => {
@@ -305,6 +365,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'succeeded',
         header: 'Succeeded',
+        accessorFn: (row) => getGenericStatus(row)?.succeeded || 0,
         cell: ({ row }) => {
           const succeeded = getGenericStatus(row.original)?.succeeded || 0
           return h('div', {
@@ -324,6 +385,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'completions',
         header: 'Completions',
+        accessorFn: (row) => getGenericSpec(row)?.completions || 0,
         cell: ({ row }) => {
           const completions = getGenericSpec(row.original)?.completions
           const succeeded = getGenericStatus(row.original)?.succeeded || 0
@@ -343,6 +405,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'parallelism',
         header: 'Parallelism',
+        accessorFn: (row) => getGenericSpec(row)?.parallelism || 1,
         cell: ({ row }) => {
           const parallelism = getGenericSpec(row.original)?.parallelism
           if (parallelism !== undefined) {
@@ -360,6 +423,16 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'duration',
         header: 'Duration',
+        accessorFn: (row) => {
+          const startTime = getGenericStatus(row)?.startTime
+          const completionTime = getGenericStatus(row)?.completionTime
+          if (startTime) {
+            const start = new Date(startTime).getTime()
+            const end = completionTime ? new Date(completionTime).getTime() : Date.now()
+            return end - start // Return duration in milliseconds for sorting
+          }
+          return 0
+        },
         cell: ({ row }) => {
           const startTime = getGenericStatus(row.original)?.startTime
           const completionTime = getGenericStatus(row.original)?.completionTime
@@ -379,12 +452,13 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         },
         size: savedSizes.duration || 80,
         minSize: 60,
-        enableSorting: false,
+        enableSorting: true,
         enableResizing: true
       },
       {
         id: 'suspend',
         header: 'Suspend',
+        accessorFn: (row) => getGenericSpec(row)?.suspend || false,
         cell: ({ row }) => {
           const suspend = getGenericSpec(row.original)?.suspend
           return h('div', {
@@ -410,6 +484,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'schedule',
         header: 'Schedule',
+        accessorFn: (row) => getGenericSpec(row)?.schedule || '',
         cell: ({ row }) => {
           const schedule = getGenericSpec(row.original)?.schedule
           if (schedule) {
@@ -428,6 +503,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'timezone',
         header: 'Timezone',
+        accessorFn: (row) => getGenericSpec(row)?.timeZone || 'UTC',
         cell: ({ row }) => {
           const timezone = getGenericSpec(row.original)?.timeZone
           if (timezone) {
@@ -446,6 +522,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'suspend',
         header: 'Suspend',
+        accessorFn: (row) => getGenericSpec(row)?.suspend || false,
         cell: ({ row }) => {
           const suspend = getGenericSpec(row.original)?.suspend
           return h('div', {
@@ -465,6 +542,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'active',
         header: 'Active',
+        accessorFn: (row) => getGenericStatus(row)?.active?.length || 0,
         cell: ({ row }) => {
           const activeJobs = getGenericStatus(row.original)?.active?.length || 0
           return h('div', {
@@ -484,6 +562,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'lastSchedule',
         header: 'Last Schedule',
+        accessorFn: (row) => getGenericStatus(row)?.lastScheduleTime || '',
         cell: ({ row }) => {
           const lastScheduleTime = getGenericStatus(row.original)?.lastScheduleTime
           if (lastScheduleTime) {
@@ -509,15 +588,22 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'containers',
         header: 'Containers',
+        accessorFn: (row) => {
+          const status = getGenericStatus(row)
+          const containerStatuses = status?.containerStatuses || []
+          const initContainerStatuses = status?.initContainerStatuses || []
+          return containerStatuses.length + initContainerStatuses.length
+        },
         cell: ({ row }) => createContainersCell(row.original),
         size: savedSizes.containers || 100,
         minSize: 50,
-        enableSorting: false,
+        enableSorting: true,
         enableResizing: true
       },
       {
         id: 'restarts',
         header: 'Restarts',
+        accessorFn: (row) => props.getTotalRestartCount(row),
         cell: ({ row }) => h('span', {
           class: 'text-xs text-gray-600 dark:text-gray-400'
         }, props.getTotalRestartCount(row.original).toString()),
@@ -529,6 +615,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'controlled_by',
         header: 'Controlled By',
+        accessorFn: (row) => props.getControlledBy(row) || '',
         cell: ({ row }) => {
           const controlledBy = props.getControlledBy(row.original)
           if (controlledBy) {
@@ -547,6 +634,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'node',
         header: 'Node',
+        accessorFn: (row) => (getGenericSpec(row) as any)?.nodeName || '',
         cell: ({ row }) => {
           // Backend sends camelCase field names as per k8s-openapi serialization
           const nodeName = (getGenericSpec(row.original) as any)?.nodeName
@@ -566,6 +654,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'qos',
         header: 'QoS',
+        accessorFn: (row) => props.getQoSClass(row),
         cell: ({ row }) => {
           const qosClass = props.getQoSClass(row.original)
           return h('div', {
@@ -593,6 +682,20 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'policyType',
         header: 'Policy Type',
+        accessorFn: (row) => {
+          const policyTypes = getGenericSpec(row)?.policyTypes
+          if (policyTypes) {
+            if (policyTypes.includes('Ingress') && policyTypes.includes('Egress')) {
+              return 'Both'
+            } else if (policyTypes.includes('Ingress')) {
+              return 'Ingress'
+            } else if (policyTypes.includes('Egress')) {
+              return 'Egress'
+            }
+          }
+          const hasEgress = getGenericSpec(row)?.egress != null
+          return hasEgress ? 'Both' : 'Ingress'
+        },
         cell: ({ row }) => {
           const policyTypes = getGenericSpec(row.original)?.policyTypes
           let displayValue = 'Ingress' // Default
@@ -638,6 +741,11 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'ready',
         header: 'Ready',
+        accessorFn: (row) => {
+          const readyReplicas = getGenericStatus(row)?.readyReplicas || 0
+          const replicas = getGenericSpec(row)?.replicas || 0
+          return readyReplicas / Math.max(replicas, 1) // Sort by ready ratio
+        },
         cell: ({ row }) => {
           const readyReplicas = getGenericStatus(row.original)?.readyReplicas || 0
           const replicas = getGenericSpec(row.original)?.replicas || 0
@@ -756,9 +864,25 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
             class: 'inline-flex items-center px-1.5 py-0 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
           }, 'Unknown')
         },
+        sortingFn: (rowA, rowB) => {
+          // Define sort priority: Healthy (4) > Progressing (3) > Stalled (2) > Unavailable (1) > Unknown (0)
+          const getConditionPriority = (row: any) => {
+            const conditions = getGenericStatus(row.original)?.conditions || []
+            const availableCondition = conditions.find((c: any) => c.type === 'Available')
+            const progressingCondition = conditions.find((c: any) => c.type === 'Progressing')
+            
+            if (availableCondition?.status === 'True' && progressingCondition?.status === 'True') return 4 // Healthy
+            if (progressingCondition?.status === 'True') return 3 // Progressing
+            if (progressingCondition?.status === 'False') return 2 // Stalled
+            if (availableCondition?.status === 'False') return 1 // Unavailable
+            return 0 // Unknown
+          }
+          
+          return getConditionPriority(rowA) - getConditionPriority(rowB)
+        },
         size: savedSizes.conditions || 100,
         minSize: 80,
-        enableSorting: false,
+        enableSorting: true,
         enableResizing: true
       }
     )
@@ -809,6 +933,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'type',
         header: 'Type',
+        accessorFn: (row) => getGenericSpec(row)?.type || 'ClusterIP',
         cell: ({ row }) => {
           const type = getGenericSpec(row.original)?.type || 'ClusterIP'
           return h('div', {
@@ -831,6 +956,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'clusterIP',
         header: 'Cluster IP',
+        accessorFn: (row) => getGenericSpec(row)?.clusterIP || '',
         cell: ({ row }) => {
           const clusterIP = getGenericSpec(row.original)?.clusterIP
           if (!clusterIP || clusterIP === 'None') {
@@ -849,6 +975,23 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'externalIP',
         header: 'External IP',
+        accessorFn: (row) => {
+          const externalIPs = getGenericSpec(row)?.externalIPs || []
+          const loadBalancerIPs = getGenericStatus(row)?.loadBalancer?.ingress || []
+          
+          if (externalIPs.length > 0) {
+            return externalIPs[0]
+          }
+          
+          if (loadBalancerIPs.length > 0) {
+            const ips = loadBalancerIPs.map((ing: any) => ing.ip || ing.hostname).filter(Boolean)
+            if (ips.length > 0) {
+              return ips[0]
+            }
+          }
+          
+          return ''
+        },
         cell: ({ row }) => {
           const externalIPs = getGenericSpec(row.original)?.externalIPs || []
           const loadBalancerIPs = getGenericStatus(row.original)?.loadBalancer?.ingress || []
@@ -890,6 +1033,12 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'ports',
         header: 'Ports',
+        accessorFn: (row) => {
+          const ports = getGenericSpec(row)?.ports || []
+          if (ports.length === 0) return ''
+          // Sort by first port number
+          return ports[0]?.port || ports[0]?.targetPort || 0
+        },
         cell: ({ row }) => {
           const ports = getGenericSpec(row.original)?.ports || []
           if (ports.length === 0) {
@@ -920,12 +1069,13 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         },
         size: savedSizes.ports || 140,
         minSize: 100,
-        enableSorting: false,
+        enableSorting: true,
         enableResizing: true
       },
       {
         id: 'status',
         header: 'Status',
+        accessorFn: (row) => props.getStatusText(row),
         cell: ({ row }) => {
           const status = props.getStatusText(row.original)
           return h('div', {
@@ -948,6 +1098,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'addressType',
         header: 'Address Type',
+        accessorFn: (row) => row.endpoint_slice?.addressType || 'IPv4',
         cell: ({ row }) => {
           const addressType = row.original.endpoint_slice?.addressType || 'IPv4'
           return h('div', {
@@ -968,6 +1119,12 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'ports',
         header: 'Ports',
+        accessorFn: (row) => {
+          const ports = row.endpoint_slice?.ports || []
+          if (ports.length === 0) return 0
+          // Sort by first port number
+          return ports[0]?.port || 0
+        },
         cell: ({ row }) => {
           // EndpointSlice ports are at the top level
           const ports = row.original.endpoint_slice?.ports || []
@@ -997,6 +1154,17 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'endpoints',
         header: 'Endpoints',
+        accessorFn: (row) => {
+          const endpoints = row.endpoint_slice?.endpoints || []
+          // Count total number of addresses across all endpoints
+          let totalAddresses = 0
+          endpoints.forEach((endpoint: any) => {
+            if (endpoint.addresses && Array.isArray(endpoint.addresses)) {
+              totalAddresses += endpoint.addresses.length
+            }
+          })
+          return totalAddresses
+        },
         cell: ({ row }) => {
           const endpoints = row.original.endpoint_slice?.endpoints || []
           if (endpoints.length === 0) {
@@ -1039,6 +1207,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
       {
         id: 'status',
         header: 'Status',
+        accessorFn: (row) => props.getStatusText(row),
         cell: ({ row }) => {
           const status = props.getStatusText(row.original)
           return h('div', {
@@ -1189,13 +1358,7 @@ function createContainersCell(item: K8sListItem) {
           h('div', {
             key: `init-${index}`,
             onMouseenter: (e: MouseEvent) => {
-              const lines = [
-                `Init: ${container.name || 'Unknown'}`,
-                `Status: ${props.getContainerStatusText(container) || 'Unknown'}`
-              ]
-              if (container.state?.running?.startedAt) {
-                lines.push(`Started: ${props.getAge(container.state.running.startedAt)} ago`)
-              }
+              const lines = getContainerTooltipLines(container, true)
               showTooltip(e, lines)
             },
             onMouseleave: hideTooltip,
@@ -1213,13 +1376,7 @@ function createContainersCell(item: K8sListItem) {
         h('div', {
           key: `container-${index}`,
           onMouseenter: (e: MouseEvent) => {
-            const lines = [
-              container.name || 'Unknown',
-              `Status: ${props.getContainerStatusText(container) || 'Unknown'}`
-            ]
-            if (container.state?.running?.startedAt) {
-              lines.push(`Started: ${props.getAge(container.state.running.startedAt)} ago`)
-            }
+            const lines = getContainerTooltipLines(container, false)
             showTooltip(e, lines)
           },
           onMouseleave: hideTooltip,

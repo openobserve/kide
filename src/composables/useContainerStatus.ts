@@ -6,7 +6,9 @@ export function useContainerStatus() {
     if (container.state?.running) return 'bg-green-500'
     if (container.state?.waiting) return 'bg-yellow-500'
     if (container.state?.terminated) {
-      return container.state.terminated.exitCode === 0 ? 'bg-blue-500' : 'bg-red-500'
+      // Terminated containers show as outlined but empty (transparent fill)
+      const borderColor = container.state.terminated.exitCode === 0 ? 'border-blue-500' : 'border-red-500'
+      return `bg-transparent ${borderColor} border-2`
     }
     return 'bg-gray-400'
   }

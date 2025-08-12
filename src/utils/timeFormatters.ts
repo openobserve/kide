@@ -10,9 +10,9 @@ export function getAge(timestamp?: string): string {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
   
-  if (days > 0) return `${days}d`
-  if (hours > 0) return `${hours}h`
-  if (minutes > 0) return `${minutes}m`
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${seconds}s`
   return `${seconds}s`
 }
 

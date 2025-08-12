@@ -60,7 +60,12 @@ function getContainerStatusColor(containerName: string): string {
   switch (status) {
     case 'Running': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
     case 'Waiting': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-    case 'Terminated': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+    case 'Terminated': 
+      // Check exit code to determine border color
+      const containerStatus = props.containerStatuses?.find(cs => cs.name === containerName)
+      const exitCode = containerStatus?.state?.terminated?.exitCode
+      const borderColor = exitCode === 0 ? 'border-blue-500 text-blue-800 dark:text-blue-300' : 'border-red-500 text-red-800 dark:text-red-300'
+      return `bg-transparent border-2 ${borderColor}`
     default: return 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
   }
 }

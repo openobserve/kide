@@ -67,21 +67,21 @@
                     :props="header.getContext()"
                   />
                   <!-- Sort indicator -->
-                  <div v-if="header.column.getCanSort()" class="w-3 h-3">
+                  <div v-if="header.column.getCanSort()" class="w-5 h-5">
                     <svg v-if="header.column.getIsSorted() === 'asc'" 
-                         class="w-3 h-3 text-gray-500" 
+                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else-if="header.column.getIsSorted() === 'desc'" 
-                         class="w-3 h-3 text-gray-500" 
+                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else 
-                         class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" 
+                         class="w-5 h-5 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -239,6 +239,7 @@ const columns = computed((): ColumnDef<any>[] => {
     {
       id: 'status',
       header: 'Status',
+      accessorFn: (row) => getStatusText(row),
       cell: ({ row }) => {
         const status = getStatusText(row.original)
         return h('span', {
@@ -250,7 +251,7 @@ const columns = computed((): ColumnDef<any>[] => {
       },
       size: savedSizes.status || 90,
       minSize: 70,
-      enableSorting: false,
+      enableSorting: true,
       enableResizing: true
     },
     {
@@ -278,14 +279,21 @@ const columns = computed((): ColumnDef<any>[] => {
           }, `${getReadyContainers(row.original)}/${getTotalContainers(row.original)}`)
         ])
       },
+      accessorFn: (row) => {
+        const status = getGenericStatus(row)
+        const containerStatuses = status?.containerStatuses || []
+        const initContainerStatuses = status?.initContainerStatuses || []
+        return containerStatuses.length + initContainerStatuses.length
+      },
       size: savedSizes.containers || 100,
       minSize: 80,
-      enableSorting: false,
+      enableSorting: true,
       enableResizing: true
     },
     {
       id: 'restarts',
       header: 'Restarts',
+      accessorFn: (row) => getTotalRestarts(row),
       cell: ({ row }) => {
         const restarts = getTotalRestarts(row.original)
         return h('div', {
@@ -464,7 +472,11 @@ function handleViewPod(pod: any): void {
 function getContainerStatusColor(container: any): string {
   if (container.state?.running) return 'bg-green-500'
   if (container.state?.waiting) return 'bg-yellow-500'
-  if (container.state?.terminated) return 'bg-red-500'
+  if (container.state?.terminated) {
+    // Terminated containers show as outlined but empty (transparent fill)
+    const borderColor = container.state.terminated.exitCode === 0 ? 'border-blue-500' : 'border-red-500'
+    return `bg-transparent ${borderColor} border-2`
+  }
   return 'bg-gray-500'
 }
 
@@ -501,10 +513,12 @@ function getAge(timestamp?: string): string {
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000)
   
-  if (days > 0) return `${days}d`
-  if (hours > 0) return `${hours}h`
-  return `${minutes}m`
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
 }
 
 // Watch for resource changes
