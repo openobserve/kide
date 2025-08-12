@@ -1199,7 +1199,7 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints') {
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'PodDisruptionBudget') {
     // Jobs, CronJobs, NetworkPolicies, IngressClasses, and Endpoints have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns

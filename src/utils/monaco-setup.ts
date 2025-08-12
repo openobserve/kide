@@ -9,6 +9,17 @@ import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
 
+// Import core editor actions for keyboard shortcuts
+import 'monaco-editor/esm/vs/editor/contrib/find/browser/findController'
+import 'monaco-editor/esm/vs/editor/contrib/multicursor/browser/multicursor'
+import 'monaco-editor/esm/vs/editor/contrib/clipboard/browser/clipboard'
+import 'monaco-editor/esm/vs/editor/contrib/comment/browser/comment'
+import 'monaco-editor/esm/vs/editor/contrib/folding/browser/folding'
+import 'monaco-editor/esm/vs/editor/contrib/format/browser/formatActions'
+
+// Import base icons and UI components
+import 'monaco-editor/esm/vs/base/browser/ui/codicons/codiconStyles'
+
 // Configure workers
 self.MonacoEnvironment = {
   getWorker(_: any, label: string) {

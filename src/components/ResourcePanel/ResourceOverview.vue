@@ -486,6 +486,70 @@
       </div>
     </div>
 
+    <!-- PodDisruptionBudget Conditions -->
+    <div v-if="resourceKind === 'PodDisruptionBudget' && getGenericStatus(resourceData)?.conditions?.length" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        Conditions
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
+      </h3>
+      <div class="space-y-2">
+        <div v-for="(condition, index) in getGenericStatus(resourceData).conditions" :key="index"
+             class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span :class="[
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                  condition.status === 'True' 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    : condition.status === 'False' 
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                ]">
+                  {{ condition.type }}
+                </span>
+                <span :class="[
+                  'text-xs px-1.5 py-0.5 rounded',
+                  condition.status === 'True' 
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    : condition.status === 'False' 
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+                ]">
+                  {{ condition.status }}
+                </span>
+                <span v-if="condition.lastTransitionTime" class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ getRelativeTime(new Date().getTime() - new Date(condition.lastTransitionTime).getTime()) }} ago
+                </span>
+              </div>
+              <div class="text-xs space-y-1">
+                <div v-if="condition.reason" class="text-gray-600 dark:text-gray-400">
+                  <span class="font-medium">Reason:</span> {{ condition.reason }}
+                </div>
+                <div v-if="condition.message" class="text-gray-600 dark:text-gray-400">
+                  <span class="font-medium">Message:</span> {{ condition.message }}
+                </div>
+                <div v-if="condition.lastProbeTime" class="text-gray-500 dark:text-gray-500">
+                  <span class="font-medium">Last Probe:</span> {{ new Date(condition.lastProbeTime).toLocaleString() }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Copy button -->
+            <button
+              @click="copyPDBCondition(condition)"
+              class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="`Copy condition ${condition.type}`"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">CronJob Status</h3>
@@ -902,6 +966,22 @@ async function copyIngressRule(rule: any): Promise<void> {
     // Fallback for older browsers
     const textArea = document.createElement('textarea')
     textArea.value = `Host: ${rule.host || '*'}, Paths: ${rule.http?.paths?.length || 0}`
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+  }
+}
+
+async function copyPDBCondition(condition: any): Promise<void> {
+  try {
+    const conditionText = `PodDisruptionBudget Condition: ${JSON.stringify(condition, null, 2)}`
+    await navigator.clipboard.writeText(conditionText)
+  } catch (error) {
+    console.error('Failed to copy PDB condition:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = `Type: ${condition.type}, Status: ${condition.status}, Reason: ${condition.reason || 'N/A'}`
     document.body.appendChild(textArea)
     textArea.select()
     document.execCommand('copy')
