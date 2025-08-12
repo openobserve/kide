@@ -527,6 +527,20 @@ const yamlContent = computed(() => {
     // Remove internal fields that shouldn't appear in YAML
     delete cleanData.completeObject
     
+    // Remove resource-specific spec wrapper fields that duplicate the main resource
+    delete cleanData.storageClassSpec
+    delete cleanData.podDisruptionBudgetSpec
+    delete cleanData.networkPolicySpec
+    delete cleanData.ingressSpec
+    delete cleanData.jobSpec
+    delete cleanData.cronJobSpec
+    delete cleanData.horizontalPodAutoscalerSpec
+    delete cleanData.roleSpec
+    delete cleanData.roleBindingSpec
+    delete cleanData.clusterRoleSpec
+    delete cleanData.clusterRoleBindingSpec
+    delete cleanData.endpointSliceSpec
+    
     // Clean up metadata if it exists
     if (cleanData.metadata) {
       const cleanMetadata = { ...cleanData.metadata }
