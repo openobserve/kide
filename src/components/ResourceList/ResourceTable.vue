@@ -1199,8 +1199,110 @@ const columns = computed((): ColumnDef<K8sListItem>[] => {
         enableResizing: true
       }
     )
-  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'PodDisruptionBudget') {
-    // Jobs, CronJobs, NetworkPolicies, IngressClasses, and Endpoints have their own custom columns or no Status column needed
+  } else if (props.resource?.kind === 'PodDisruptionBudget') {
+    // Add PodDisruptionBudget-specific columns
+    baseColumns.push(
+      {
+        id: 'currentHealthy',
+        header: 'Current Healthy',
+        accessorFn: (row) => getGenericStatus(row)?.currentHealthy || 0,
+        cell: ({ row }) => {
+          const currentHealthy = getGenericStatus(row.original)?.currentHealthy || 0
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400'
+          }, currentHealthy.toString())
+        },
+        size: savedSizes.currentHealthy || 90,
+        minSize: 70,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'desiredHealthy',
+        header: 'Desired Healthy',
+        accessorFn: (row) => getGenericStatus(row)?.desiredHealthy || 0,
+        cell: ({ row }) => {
+          const desiredHealthy = getGenericStatus(row.original)?.desiredHealthy || 0
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400'
+          }, desiredHealthy.toString())
+        },
+        size: savedSizes.desiredHealthy || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'disruptionsAllowed',
+        header: 'Disruptions Allowed',
+        accessorFn: (row) => getGenericStatus(row)?.disruptionsAllowed || 0,
+        cell: ({ row }) => {
+          const disruptionsAllowed = getGenericStatus(row.original)?.disruptionsAllowed || 0
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400'
+          }, disruptionsAllowed.toString())
+        },
+        size: savedSizes.disruptionsAllowed || 120,
+        minSize: 100,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'expectedPods',
+        header: 'Expected Pods',
+        accessorFn: (row) => getGenericStatus(row)?.expectedPods || 0,
+        cell: ({ row }) => {
+          const expectedPods = getGenericStatus(row.original)?.expectedPods || 0
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400'
+          }, expectedPods.toString())
+        },
+        size: savedSizes.expectedPods || 100,
+        minSize: 80,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'PersistentVolumeClaim') {
+    // Add PersistentVolumeClaim-specific columns
+    baseColumns.push(
+      {
+        id: 'capacity',
+        header: 'Capacity',
+        accessorFn: (row) => getGenericStatus(row)?.capacity?.storage || '-',
+        cell: ({ row }) => {
+          const storage = getGenericStatus(row.original)?.capacity?.storage
+          if (!storage) {
+            return h('span', { class: 'text-gray-400 dark:text-gray-500 text-xs' }, '-')
+          }
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono'
+          }, storage)
+        },
+        size: savedSizes.capacity || 80,
+        minSize: 60,
+        enableSorting: true,
+        enableResizing: true
+      },
+      {
+        id: 'storageClassName',
+        header: 'Storage Class',
+        accessorFn: (row) => getGenericSpec(row)?.storageClassName || 'default',
+        cell: ({ row }) => {
+          const storageClass = getGenericSpec(row.original)?.storageClassName || 'default'
+          return h('div', {
+            class: 'text-sm text-gray-600 dark:text-gray-400',
+            title: storageClass
+          }, storageClass)
+        },
+        size: savedSizes.storageClassName || 120,
+        minSize: 100,
+        enableSorting: true,
+        enableResizing: true
+      }
+    )
+  } else if (props.resource?.kind === 'Job' || props.resource?.kind === 'CronJob' || props.resource?.kind === 'NetworkPolicy' || props.resource?.kind === 'IngressClass' || props.resource?.kind === 'Endpoints' || props.resource?.kind === 'ConfigMap' || props.resource?.kind === 'Secret') {
+    // Jobs, CronJobs, NetworkPolicies, IngressClasses, Endpoints, ConfigMaps, and Secrets have their own custom columns or no Status column needed
   } else {
     // Add status column for resources without custom columns
     baseColumns.push(

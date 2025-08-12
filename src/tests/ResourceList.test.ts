@@ -228,8 +228,8 @@ describe('ResourceList Component', () => {
         }
       })
 
-      // ConfigMaps should show Ready
-      expect(configWrapper.text()).toContain('Ready')
+      // ConfigMaps should NOT show Status column (no meaningful status)
+      expect(configWrapper.text()).not.toContain('Status')
 
       // Test DaemonSet resource
       const daemonSetResource = {
