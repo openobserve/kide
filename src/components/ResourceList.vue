@@ -17,15 +17,15 @@
     
     <!-- Header -->
     <div class="px-4 py-2 border-b border-border-primary">
-      <div class="flex items-center justify-between">
-        <div>
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-shrink-0">
           <h1 class="text-lg font-semibold text-text-primary">
             {{ resource?.name || 'Unknown Resource' }}
           </h1>
         </div>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-4 flex-1 justify-end">
           <!-- Namespace multi-select for namespaced resources -->
-          <div v-if="resource?.namespaced && namespaces && namespaces.length > 0" class="min-w-0 flex-1 max-w-md">
+          <div v-if="resource?.namespaced && namespaces && namespaces.length > 0" class="w-80">
             <MultiSelectNamespace
               :namespaces="namespaces || []"
               :selectedNamespaces="selectedNamespaces || []"
@@ -34,7 +34,7 @@
           </div>
           
           <!-- Filter text field -->
-          <div class="min-w-0 flex-1 max-w-sm">
+          <div class="w-80">
             <div class="mt-1 relative">
               <input
                 v-model="filterText"
