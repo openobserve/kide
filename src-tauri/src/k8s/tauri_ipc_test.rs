@@ -123,32 +123,29 @@ mod tests {
         let serialization_result = serde_json::to_string(&list_item);
         match serialization_result {
             Ok(json) => {
-                println!("✅ K8sListItem with direct k8s-openapi types serialized!");
-                println!("JSON size: {} bytes", json.len());
                 
                 // Test if we can deserialize it back
                 let deserialization_result: Result<K8sListItem, _> = serde_json::from_str(&json);
                 match deserialization_result {
                     Ok(deserialized) => {
-                        println!("✅ Deserialization successful!");
                         
                         // Check that we can access the Pod data
                         if let Some(pod_status) = &deserialized.pod_status {
                             if let Some(phase) = &pod_status.phase {
-                                println!("✅ Pod phase accessible: {}", phase);
+                                assert_eq!(phase, "Running");
                             }
                         }
                         
                         if let Some(pod_spec) = &deserialized.pod_spec {
                             if let Some(node_name) = &pod_spec.node_name {
-                                println!("✅ Pod node name accessible: {}", node_name);
+                                assert_eq!(node_name, "worker-node-1");
                             }
                         }
                     },
-                    Err(e) => println!("❌ Deserialization failed: {}", e),
+                    Err(e) => panic!("K8sListItem deserialization failed: {}", e),
                 }
             },
-            Err(e) => println!("❌ Serialization failed: {}", e),
+            Err(e) => panic!("K8sListItem serialization failed: {}", e),
         }
         
         // Test in WatchEvent (this is what gets sent through Tauri IPC)
@@ -156,20 +153,19 @@ mod tests {
         let event_serialization = serde_json::to_string(&watch_event);
         match event_serialization {
             Ok(json) => {
-                println!("✅ WatchEvent with direct k8s-openapi types serialized!");
-                println!("Event JSON size: {} bytes", json.len());
                 
                 let event_deserialization: Result<WatchEvent, _> = serde_json::from_str(&json);
                 match event_deserialization {
                     Ok(WatchEvent::Added(item)) => {
-                        println!("✅ WatchEvent deserialized successfully!");
                         assert_eq!(item.kind, "Pod");
                     },
-                    Ok(_) => println!("❌ Wrong event type"),
-                    Err(e) => println!("❌ WatchEvent deserialization failed: {}", e),
+                    Ok(WatchEvent::Modified(_)) | Ok(WatchEvent::Deleted(_)) => {
+                        panic!("Expected WatchEvent::Added, got different event type");
+                    },
+                    Err(e) => panic!("WatchEvent deserialization failed: {}", e),
                 }
             },
-            Err(e) => println!("❌ WatchEvent serialization failed: {}", e),
+            Err(e) => panic!("WatchEvent serialization failed: {}", e),
         }
     }
     
@@ -234,76 +230,67 @@ mod tests {
             subsets: None,
         };
         
-        println!("=== Testing Direct k8s-openapi Approach v2 ===");
         
         let serialization_result = serde_json::to_string(&list_item);
         match serialization_result {
             Ok(json) => {
-                println!("✅ Direct k8s-openapi approach v2 serialized!");
-                println!("JSON size: {} bytes", json.len());
+                assert!(!json.is_empty(), "Serialized JSON should not be empty");
             },
-            Err(e) => println!("❌ Direct k8s-openapi approach v2 serialization failed: {}", e),
+            Err(e) => panic!("K8sListItem serialization failed: {}", e),
         }
         
         let watch_event = WatchEvent::Added(list_item);
         let event_serialization = serde_json::to_string(&watch_event);
         match event_serialization {
             Ok(json) => {
-                println!("✅ WatchEvent with direct k8s-openapi approach v2 serialized!");
-                println!("Event JSON size: {} bytes", json.len());
+                assert!(!json.is_empty(), "Watch event JSON should not be empty");
             },
-            Err(e) => println!("❌ WatchEvent with direct k8s-openapi approach v2 failed: {}", e),
+            Err(e) => panic!("WatchEvent serialization failed: {}", e),
         }
     }
     
     /// Verify official k8s-openapi types work correctly
     #[test]
     fn test_official_k8s_openapi_types() {
-        println!("=== VERIFICATION: Official k8s-openapi Types ===");
         
         let pod = create_sample_pod();
         let spec = pod.spec.as_ref().unwrap();
         let status = pod.status.as_ref().unwrap();
         
         // Test 1: Direct k8s-openapi serialization
-        println!("\n--- Direct k8s-openapi serialization ---");
         let direct_spec_json = serde_json::to_value(spec);
         let direct_status_json = serde_json::to_value(status);
         
         match (direct_spec_json, direct_status_json) {
             (Ok(spec_json), Ok(status_json)) => {
-                println!("✅ Direct serialization works");
-                println!("PodSpec JSON size: {} bytes", serde_json::to_string(&spec_json).unwrap().len());
-                println!("PodStatus JSON size: {} bytes", serde_json::to_string(&status_json).unwrap().len());
                 
                 // Check what fields are available
                 if let Some(containers) = spec_json.get("containers") {
-                    println!("✅ Containers field present: {}", containers.is_array());
+                    assert!(containers.is_array(), "Containers should be an array");
                 }
                 if let Some(node_name) = spec_json.get("nodeName") {
-                    println!("✅ Node name field present: {}", node_name);
+                    assert_eq!(node_name, "worker-node-1");
                 }
                 if let Some(phase) = status_json.get("phase") {
-                    println!("✅ Phase field present: {}", phase);
+                    assert_eq!(phase, "Running");
                 }
                 if let Some(container_statuses) = status_json.get("containerStatuses") {
-                    println!("✅ Container statuses field present: {}", container_statuses.is_array());
+                    assert!(container_statuses.is_array(), "Container statuses should be an array");
                 }
             },
-            _ => println!("❌ Direct serialization failed"),
+            (Err(spec_err), _) => panic!("PodSpec serialization failed: {}", spec_err),
+            (_, Err(status_err)) => panic!("PodStatus serialization failed: {}", status_err),
         }
         
         // Test 2: Verify all official k8s-openapi fields are available through direct serialization
-        println!("\n--- Official k8s-openapi field verification ---");
         if let Ok(direct_spec_json) = serde_json::to_value(spec) {
             if let Some(obj) = direct_spec_json.as_object() {
-                println!("Official k8s-openapi spec fields: {:?}", obj.keys().collect::<Vec<_>>());
-                println!("✅ All fields preserved through official k8s-openapi types");
+                assert!(!obj.is_empty(), "PodSpec JSON object should not be empty");
             }
         }
         if let Ok(direct_status_json) = serde_json::to_value(status) {
             if let Some(obj) = direct_status_json.as_object() {
-                println!("Official k8s-openapi status fields: {:?}", obj.keys().collect::<Vec<_>>());
+                assert!(!obj.is_empty(), "PodStatus JSON object should not be empty");
             }
         }
     }

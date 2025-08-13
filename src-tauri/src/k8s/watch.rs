@@ -91,10 +91,40 @@ pub struct WatchManager {
 
 impl WatchManager {
     pub fn new(client: K8sClient) -> Self {
-        Self {
+        let manager = Self {
             client,
             active_watches: Arc::new(Mutex::new(HashMap::new())),
-        }
+        };
+        
+        // Start periodic cleanup task
+        let watches_clone = manager.active_watches.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+            
+            loop {
+                interval.tick().await;
+                
+                // Cleanup finished watches
+                let mut watches = watches_clone.lock().await;
+                watches.retain(|key, handle| {
+                    if handle.is_finished() {
+                        println!("🧹 Cleaned up finished watch: {key}");
+                        false
+                    } else {
+                        true
+                    }
+                });
+                
+                if !watches.is_empty() {
+                    println!("📊 Active watches: {}", watches.len());
+                }
+                
+                // Monitor file descriptor usage
+                super::system_monitor::monitor_fd_usage();
+            }
+        });
+        
+        manager
     }
 
     pub async fn start_watch(
@@ -126,7 +156,7 @@ impl WatchManager {
         let resource_type_clone = resource_type.to_string();
 
         // Determine if we should watch all namespaces or specific ones
-        let watch_all = namespaces.is_none() || namespaces.as_ref().map_or(true, |ns| ns.is_empty());
+        let watch_all = namespaces.as_ref().map_or(true, |ns| ns.is_empty());
 
         // Create helper macro for resource watching
         macro_rules! create_watch {
@@ -307,9 +337,29 @@ where
     K: std::fmt::Debug,
     K: serde::Serialize,
 {
-    let mut stream = watcher(api, Config::default()).boxed();
+    use tokio::time::{timeout, Duration};
     
-    while let Some(event) = stream.next().await {
+    let config = Config::default().timeout(30); // Add timeout to prevent hanging connections
+    let mut stream = watcher(api, config).boxed();
+    
+    // Add timeout and error recovery to prevent indefinite blocking
+    loop {
+        let timeout_result = timeout(Duration::from_secs(60), stream.next()).await;
+        
+        let event = match timeout_result {
+            Ok(Some(event)) => event,
+            Ok(None) => {
+                // Stream ended normally
+                println!("🔄 Watch stream ended for {resource_type}");
+                break;
+            }
+            Err(_) => {
+                // Timeout occurred
+                println!("⚠️  Watch stream timeout for {resource_type} - restarting");
+                break;
+            }
+        };
+
         match event {
             Ok(watcher::Event::Apply(obj)) => {
                 if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
@@ -333,7 +383,7 @@ where
                 // Initialization complete, no action needed
             }
             Err(e) => {
-                eprintln!("Watch error for {}: {:?}", resource_type, e);
+                eprintln!("Watch error for {resource_type}: {e:?}");
                 break;
             }
         }
@@ -686,8 +736,8 @@ mod tests {
         assert_eq!(resource_type_to_kind_and_api_version("unknown"), ("unknown", "v1"));
     }
 
-    #[test]
-    fn test_watch_manager_creation() {
+    #[tokio::test]
+    async fn test_watch_manager_creation() {
         let client = K8sClient::new();
         let _manager = WatchManager::new(client);
         

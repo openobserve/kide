@@ -28,17 +28,11 @@ mod tests {
         let json_result = serde_json::to_string(&pod_spec);
         match json_result {
             Ok(json) => {
-                println!("✅ PodSpec serialized successfully!");
-                println!("JSON length: {} bytes", json.len());
-                
                 // Try to deserialize back
                 let deserialize_result: Result<PodSpec, _> = serde_json::from_str(&json);
-                match deserialize_result {
-                    Ok(_) => println!("✅ PodSpec deserialized successfully!"),
-                    Err(e) => println!("❌ PodSpec deserialization failed: {}", e),
-                }
+                assert!(deserialize_result.is_ok(), "PodSpec should deserialize successfully");
             },
-            Err(e) => println!("❌ PodSpec serialization failed: {}", e),
+            Err(e) => panic!("PodSpec serialization failed: {}", e),
         }
     }
     
@@ -53,16 +47,10 @@ mod tests {
         let json_result = serde_json::to_string(&pod_status);
         match json_result {
             Ok(json) => {
-                println!("✅ PodStatus serialized successfully!");
-                println!("JSON length: {} bytes", json.len());
-                
                 let deserialize_result: Result<PodStatus, _> = serde_json::from_str(&json);
-                match deserialize_result {
-                    Ok(_) => println!("✅ PodStatus deserialized successfully!"),
-                    Err(e) => println!("❌ PodStatus deserialization failed: {}", e),
-                }
+                assert!(deserialize_result.is_ok(), "PodStatus should deserialize successfully");
             },
-            Err(e) => println!("❌ PodStatus serialization failed: {}", e),
+            Err(e) => panic!("PodStatus serialization failed: {}", e),
         }
     }
     
@@ -95,17 +83,10 @@ mod tests {
         let json_result = serde_json::to_string(&pod);
         match json_result {
             Ok(json) => {
-                println!("✅ Complete Pod serialized successfully!");
-                println!("JSON length: {} bytes", json.len());
-                println!("Sample JSON: {}", &json[..std::cmp::min(200, json.len())]);
-                
                 let deserialize_result: Result<Pod, _> = serde_json::from_str(&json);
-                match deserialize_result {
-                    Ok(_) => println!("✅ Complete Pod deserialized successfully!"),
-                    Err(e) => println!("❌ Complete Pod deserialization failed: {}", e),
-                }
+                assert!(deserialize_result.is_ok(), "Complete Pod should deserialize successfully");
             },
-            Err(e) => println!("❌ Complete Pod serialization failed: {}", e),
+            Err(e) => panic!("Complete Pod serialization failed: {}", e),
         }
     }
     
@@ -128,7 +109,6 @@ mod tests {
         // Convert to JSON Value to simulate what would be sent through Tauri IPC
         match serde_json::to_value(&pod_spec) {
             Ok(_) => {
-                println!("✅ PodSpec converted to JSON Value successfully!");
                 
                 // Now test if this can be included in a K8sListItem and serialized
                 let list_item = K8sListItem {
@@ -182,11 +162,11 @@ mod tests {
                 };
                 
                 match serde_json::to_string(&list_item) {
-                    Ok(_) => println!("✅ K8sListItem with k8s-openapi PodSpec serialized successfully!"),
-                    Err(e) => println!("❌ K8sListItem serialization failed: {}", e),
+                    Ok(_) => assert!(true, "K8sListItem serialization successful"),
+                    Err(e) => panic!("K8sListItem serialization failed: {}", e),
                 }
             },
-            Err(e) => println!("❌ PodSpec to JSON Value conversion failed: {}", e),
+            Err(e) => panic!("PodSpec to_value failed: {}", e),
         }
     }
 }

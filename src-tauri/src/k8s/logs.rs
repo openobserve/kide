@@ -14,10 +14,37 @@ pub struct LogStreamManager {
 
 impl LogStreamManager {
     pub fn new(client: K8sClient) -> Self {
-        Self {
+        let manager = Self {
             client,
             active_streams: Arc::new(Mutex::new(HashMap::new())),
-        }
+        };
+        
+        // Start periodic cleanup task for log streams
+        let streams_clone = manager.active_streams.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+            
+            loop {
+                interval.tick().await;
+                
+                // Cleanup finished log streams
+                let mut streams = streams_clone.lock().await;
+                streams.retain(|key, handle| {
+                    if handle.is_finished() {
+                        println!("🧹 Cleaned up finished log stream: {key}");
+                        false
+                    } else {
+                        true
+                    }
+                });
+                
+                if !streams.is_empty() {
+                    println!("📊 Active log streams: {}", streams.len());
+                }
+            }
+        });
+        
+        manager
     }
 
     pub async fn start_log_stream(
@@ -61,28 +88,54 @@ impl LogStreamManager {
         let pod_name_clone = pod_name.clone();
 
         let handle = tokio::spawn(async move {
-            match api.log_stream(&pod_name_clone, &log_params).await {
-                Ok(stream) => {
-                    // Read lines from the async stream
+            use tokio::time::{timeout, Duration};
+            
+            // Add connection timeout
+            match timeout(Duration::from_secs(30), api.log_stream(&pod_name_clone, &log_params)).await {
+                Ok(Ok(stream)) => {
+                    // Read lines from the async stream with timeout protection
                     let mut lines = stream.lines();
                     
-                    while let Some(line_result) = lines.next().await {
-                        match line_result {
-                            Ok(line) => {
-                                let _ = app_handle_clone.emit(
-                                    "pod-log-line",
-                                    serde_json::json!({
-                                        "stream_id": stream_id_clone,
-                                        "line": line
-                                    }),
-                                );
+                    loop {
+                        let line_timeout_result = timeout(Duration::from_secs(30), lines.next()).await;
+                        
+                        match line_timeout_result {
+                            Ok(Some(line_result)) => {
+                                match line_result {
+                                    Ok(line) => {
+                                        let _ = app_handle_clone.emit(
+                                            "pod-log-line",
+                                            serde_json::json!({
+                                                "stream_id": stream_id_clone,
+                                                "line": line
+                                            }),
+                                        );
+                                    }
+                                    Err(e) => {
+                                        let _ = app_handle_clone.emit(
+                                            "pod-log-error",
+                                            serde_json::json!({
+                                                "stream_id": stream_id_clone,
+                                                "error": format!("Stream error: {}", e)
+                                            }),
+                                        );
+                                        break;
+                                    }
+                                }
                             }
-                            Err(e) => {
+                            Ok(None) => {
+                                // Stream ended normally
+                                println!("🔄 Log stream ended for {stream_id_clone}");
+                                break;
+                            }
+                            Err(_) => {
+                                // Timeout occurred
+                                println!("⚠️  Log stream timeout for {stream_id_clone} - ending stream");
                                 let _ = app_handle_clone.emit(
                                     "pod-log-error",
                                     serde_json::json!({
                                         "stream_id": stream_id_clone,
-                                        "error": format!("Stream error: {}", e)
+                                        "error": "Log stream timeout"
                                     }),
                                 );
                                 break;
@@ -90,7 +143,7 @@ impl LogStreamManager {
                         }
                     }
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     let _ = app_handle_clone.emit(
                         "pod-log-error",
                         serde_json::json!({
@@ -99,7 +152,24 @@ impl LogStreamManager {
                         }),
                     );
                 }
+                Err(_) => {
+                    let _ = app_handle_clone.emit(
+                        "pod-log-error",
+                        serde_json::json!({
+                            "stream_id": stream_id_clone,
+                            "error": "Log stream connection timeout"
+                        }),
+                    );
+                }
             }
+            
+            // Emit stream end event
+            let _ = app_handle_clone.emit(
+                "pod-log-end",
+                serde_json::json!({
+                    "stream_id": stream_id_clone
+                }),
+            );
         });
 
         streams.insert(stream_id.clone(), handle);

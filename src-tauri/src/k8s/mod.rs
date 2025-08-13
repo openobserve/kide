@@ -4,6 +4,8 @@ pub mod logs;
 pub mod resources;
 pub mod watch;
 pub mod resource_map;
+pub mod system_monitor;
+pub mod resource_api;
 
 #[cfg(test)]
 mod tests;
@@ -20,3 +22,5 @@ pub use logs::LogStreamManager;
 pub use resources::*;
 pub use watch::*;
 pub use resource_map::*;
+pub use system_monitor::*;
+pub use resource_api::*;
