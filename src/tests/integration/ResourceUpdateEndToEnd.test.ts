@@ -29,7 +29,7 @@ const MockKubernetesApp = {
                 :key="resource.metadata.uid"
                 :class="['resource-item', { selected: selectedResource?.metadata.uid === resource.metadata.uid }]"
                 @click="selectResource(resource)"
-                :data-testid="\`resource-item-\${resource.metadata.name}\`"
+                :data-testid="'resource-item-' + resource.metadata.name"
               >
                 <span class="resource-name">{{ resource.metadata.name }}</span>
                 <span class="resource-namespace" v-if="resource.metadata.namespace">{{ resource.metadata.namespace }}</span>
@@ -100,7 +100,7 @@ const MockKubernetesApp = {
                 </button>
                 <button 
                   @click="resetYaml"
-                  :disabled="!hasYamlChanges"
+                  :disabled="!hasYamlChanges || savingYaml"
                   data-testid="reset-yaml-button"
                 >
                   Reset
@@ -238,7 +238,7 @@ const MockKubernetesApp = {
         this.hasYamlChanges = false
         
       } catch (error: any) {
-        this.yamlError = \`Failed to load YAML: \${error.message}\`
+        this.yamlError = `Failed to load YAML: ${error.message}`
       } finally {
         this.loadingYaml = false
       }
@@ -261,7 +261,7 @@ const MockKubernetesApp = {
         
         this.originalYamlContent = this.yamlContent
         this.hasYamlChanges = false
-        this.yamlSuccess = \`\${this.selectedResource.kind} '\${this.selectedResource.metadata.name}' updated successfully\`
+        this.yamlSuccess = `${this.selectedResource.kind} '${this.selectedResource.metadata.name}' updated successfully`
         
         // Update the local resource data if it was a replica change
         if (this.yamlContent.includes('replicas:')) {
@@ -277,7 +277,7 @@ const MockKubernetesApp = {
         }, 5000)
         
       } catch (error: any) {
-        this.yamlError = \`Failed to save changes: \${error.message}\`
+        this.yamlError = `Failed to save changes: ${error.message}`
       } finally {
         this.savingYaml = false
       }
@@ -293,7 +293,7 @@ const MockKubernetesApp = {
     async deleteResource() {
       if (!this.selectedResource) return
       
-      if (!confirm(\`Delete \${this.selectedResource.kind} '\${this.selectedResource.metadata.name}'?\`)) {
+      if (!confirm(`Delete ${this.selectedResource.kind} '${this.selectedResource.metadata.name}'?`)) {
         return
       }
       
@@ -309,7 +309,7 @@ const MockKubernetesApp = {
         this.selectedResource = null
         
       } catch (error: any) {
-        alert(\`Failed to delete resource: \${error.message}\`)
+        alert(`Failed to delete resource: ${error.message}`)
       }
     },
     
@@ -320,7 +320,7 @@ const MockKubernetesApp = {
       for (const [key, value] of Object.entries(obj)) {
         if (value === null || value === undefined) continue
         
-        yaml += \`\${spaces}\${key}:\`
+        yaml += `${spaces}${key}:`
         
         if (typeof value === 'object' && !Array.isArray(value)) {
           yaml += '\\n' + this.jsonToYaml(value, indent + 1)
@@ -328,13 +328,13 @@ const MockKubernetesApp = {
           yaml += '\\n'
           for (const item of value) {
             if (typeof item === 'object') {
-              yaml += \`\${spaces}- \\n\${this.jsonToYaml(item, indent + 1)}\`
+              yaml += `${spaces}- \n${this.jsonToYaml(item, indent + 1)}`
             } else {
-              yaml += \`\${spaces}- \${item}\\n\`
+              yaml += `${spaces}- ${item}\n`
             }
           }
         } else {
-          yaml += \` \${value}\\n\`
+          yaml += ` ${value}\n`
         }
       }
       
@@ -480,7 +480,7 @@ describe('Resource Update End-to-End Integration Tests', () => {
       mockInvoke.mockResolvedValueOnce(scenario.mockResponse)
 
       // Select resource
-      await wrapper.find(\`[data-testid="resource-item-\${scenario.resourceName}"]\`).trigger('click')
+      await wrapper.find(`[data-testid="resource-item-${scenario.resourceName}"]`).trigger('click')
       await nextTick()
 
       // Switch to YAML tab and load
