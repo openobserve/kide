@@ -1,96 +1,130 @@
 <template>
-  <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Service Configuration</h3>
+  <div class="elevated-surface rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-text-primary mb-3">Service Configuration</h3>
     <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Type</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">{{ spec.type || 'ClusterIP' }}</dd>
+        <dt class="text-xs font-medium text-text-secondary">Type</dt>
+        <dd class="text-sm text-text-primary">
+          <span class="status-badge status-badge-info">
+            {{ spec.type || 'ClusterIP' }}
+          </span>
+        </dd>
       </div>
       <div v-if="spec.clusterIP">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Cluster IP</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">{{ spec.clusterIP }}</dd>
+        <dt class="text-xs font-medium text-text-secondary">Cluster IP</dt>
+        <dd class="text-sm text-text-primary font-mono">{{ spec.clusterIP }}</dd>
       </div>
       <div v-if="spec.ports?.length">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Ports</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
-          <div v-for="port in spec.ports" :key="port.port" class="font-mono text-xs">
-            {{ port.port }}:{{ port.targetPort }}/{{ port.protocol || 'TCP' }}
-            <span v-if="port.name" class="text-gray-500 dark:text-gray-400">({{ port.name }})</span>
+        <dt class="text-xs font-medium text-text-secondary">Ports</dt>
+        <dd class="text-sm text-text-primary">
+          <div v-for="port in spec.ports" :key="port.port" class="mb-1">
+            <span class="font-mono text-sm bg-surface-secondary px-2 py-1 rounded border border-border-primary">
+              {{ port.port }}:{{ port.targetPort }}/{{ port.protocol || 'TCP' }}
+            </span>
+            <span v-if="port.name" class="text-text-secondary text-xs ml-2">({{ port.name }})</span>
+            <span v-if="port.appProtocol" class="text-text-secondary text-xs ml-1">[{{ port.appProtocol }}]</span>
           </div>
         </dd>
       </div>
       <div v-if="spec.selector">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Selector</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
-          <div v-for="(value, key) in spec.selector" :key="key" class="text-xs">
-            <span class="font-mono">{{ key }}: {{ value }}</span>
+        <dt class="text-xs font-medium text-text-secondary">Selector</dt>
+        <dd class="text-sm text-text-primary">
+          <div class="flex flex-wrap gap-2">
+            <div v-for="(value, key) in spec.selector" :key="key" class="inline-flex items-center group">
+              <span class="status-badge status-badge-info rounded-l-full border-r-0">
+                {{ key }}
+              </span>
+              <span class="status-badge status-badge-info rounded-r-full border-l-0 opacity-80">
+                {{ value }}
+              </span>
+            </div>
           </div>
         </dd>
       </div>
       <div v-if="spec.clusterIPs?.length">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Cluster IPs</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
-          <div v-for="ip in spec.clusterIPs" :key="ip" class="font-mono text-xs">
-            {{ ip }}
+        <dt class="text-xs font-medium text-text-secondary">Cluster IPs</dt>
+        <dd class="text-sm text-text-primary">
+          <div class="space-y-1">
+            <div v-for="ip in spec.clusterIPs" :key="ip" class="font-mono text-sm">
+              {{ ip }}
+            </div>
           </div>
         </dd>
       </div>
       <div v-if="spec.ipFamilies?.length">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">IP Families</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
+        <dt class="text-xs font-medium text-text-secondary">IP Families</dt>
+        <dd class="text-sm text-text-primary">
           <div class="flex flex-wrap gap-1">
             <span v-for="family in spec.ipFamilies" :key="family" 
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  class="status-badge status-badge-info">
               {{ family }}
             </span>
           </div>
         </dd>
       </div>
       <div v-if="spec.ipFamilyPolicy">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">IP Family Policy</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+        <dt class="text-xs font-medium text-text-secondary">IP Family Policy</dt>
+        <dd class="text-sm text-text-primary">
+          <span class="status-badge status-badge-success">
             {{ spec.ipFamilyPolicy }}
           </span>
         </dd>
       </div>
       <div v-if="spec.externalTrafficPolicy">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">External Traffic Policy</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
+        <dt class="text-xs font-medium text-text-secondary">External Traffic Policy</dt>
+        <dd class="text-sm text-text-primary">
           <span :class="[
-            'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+            'status-badge',
             spec.externalTrafficPolicy === 'Local' 
-              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+              ? 'status-badge-warning'
+              : 'status-badge-info'
           ]">
             {{ spec.externalTrafficPolicy }}
           </span>
         </dd>
       </div>
       <div v-if="spec.internalTrafficPolicy">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Internal Traffic Policy</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">
+        <dt class="text-xs font-medium text-text-secondary">Internal Traffic Policy</dt>
+        <dd class="text-sm text-text-primary">
+          <span class="status-badge status-badge-secondary">
             {{ spec.internalTrafficPolicy }}
           </span>
         </dd>
       </div>
       <div v-if="spec.allocateLoadBalancerNodePorts !== undefined">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Allocate LoadBalancer NodePorts</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
+        <dt class="text-xs font-medium text-text-secondary">Allocate LoadBalancer NodePorts</dt>
+        <dd class="text-sm text-text-primary">
           <span :class="[
-            'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+            'status-badge',
             spec.allocateLoadBalancerNodePorts 
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+              ? 'status-badge-success'
+              : 'status-badge-error'
           ]">
             {{ spec.allocateLoadBalancerNodePorts ? 'Yes' : 'No' }}
           </span>
         </dd>
       </div>
       <div v-if="spec.healthCheckNodePort">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Health Check NodePort</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">{{ spec.healthCheckNodePort }}</dd>
+        <dt class="text-xs font-medium text-text-secondary">Health Check NodePort</dt>
+        <dd class="text-sm text-text-primary font-mono">{{ spec.healthCheckNodePort }}</dd>
+      </div>
+      
+      <!-- Session Affinity -->
+      <div v-if="spec.sessionAffinity">
+        <dt class="text-xs font-medium text-text-secondary">Session Affinity</dt>
+        <dd class="text-sm text-text-primary">
+          <span :class="[
+            'status-badge',
+            spec.sessionAffinity === 'ClientIP' 
+              ? 'status-badge-warning'
+              : 'status-badge-secondary'
+          ]">
+            {{ spec.sessionAffinity }}
+          </span>
+          <div v-if="spec.sessionAffinity === 'ClientIP' && spec.sessionAffinityConfig?.clientIP?.timeoutSeconds" class="text-xs text-text-secondary mt-1">
+            Timeout: {{ spec.sessionAffinityConfig.clientIP.timeoutSeconds }}s
+          </div>
+        </dd>
       </div>
     </dl>
   </div>
@@ -107,6 +141,7 @@ interface Props {
       targetPort: number | string
       protocol?: string
       name?: string
+      appProtocol?: string
     }>
     selector?: Record<string, string>
     ipFamilies?: string[]
@@ -117,6 +152,12 @@ interface Props {
     healthCheckNodePort?: number
     loadBalancerClass?: string
     loadBalancerSourceRanges?: string[]
+    sessionAffinity?: string
+    sessionAffinityConfig?: {
+      clientIP?: {
+        timeoutSeconds?: number
+      }
+    }
   }
 }
 

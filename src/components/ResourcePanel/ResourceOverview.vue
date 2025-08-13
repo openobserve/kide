@@ -265,7 +265,7 @@
 
     <!-- Service-specific configuration -->
     <ServiceConfiguration
-      v-if="resourceKind === 'Service' && resourceData?.spec"
+      v-if="resourceKind === 'Service' && getGenericSpec(resourceData)"
       :spec="getGenericSpec(resourceData)"
     />
 
@@ -1164,6 +1164,9 @@ function getResourceSpecificFields(): Array<{key: string, label: string, value: 
     }
     if (getGenericSpec(props.resourceData).type) {
       fields.push({ key: 'type', label: 'Type', value: getGenericSpec(props.resourceData).type })
+    }
+    if (getGenericSpec(props.resourceData).sessionAffinity) {
+      fields.push({ key: 'sessionAffinity', label: 'Session Affinity', value: getGenericSpec(props.resourceData).sessionAffinity })
     }
     
     // LoadBalancer specific fields
