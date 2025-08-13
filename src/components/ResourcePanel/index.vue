@@ -57,16 +57,11 @@
           <!-- Compact key-value layout similar to environment variables -->
           <div class="bg-gray-700 rounded-lg p-3">
             <div v-for="(value, key) in getResourceData()" :key="key" 
-                 class="flex items-start justify-between py-2 border-b border-gray-600 last:border-b-0 gap-4">
+                 class="flex items-start justify-between py-1 border-b border-gray-600 last:border-b-0 gap-4">
               
               <!-- Left side: Key and controls -->
               <div class="flex items-center gap-2 flex-shrink-0 min-w-0">
-                <span :class="[
-                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium font-mono',
-                  resourceKind === 'Secret'
-                    ? 'bg-green-900/30 text-green-300'
-                    : 'bg-blue-900/30 text-blue-300'
-                ]">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium font-mono text-green-300">
                   {{ key }}
                 </span>
                 
@@ -220,7 +215,7 @@
           v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.containers"
           class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-text-primary mb-3">Containers</h3>
+          <h3 class="text-sm font-semibold text-status-warning mb-3">Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).containers" :key="container.name"
                  class="bg-surface-secondary rounded border border-border-primary p-3">
@@ -269,7 +264,7 @@
           v-if="resourceKind === 'Job' && getGenericSpec(resourceData)?.template?.spec?.containers"
           class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-text-primary mb-3">Job Template Containers</h3>
+          <h3 class="text-sm font-semibold text-status-warning mb-3">Job Template Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).template.spec.containers" :key="container.name"
                  class="bg-surface-secondary rounded border border-border-primary p-3">
@@ -327,7 +322,7 @@
           v-if="resourceKind === 'Job' && getGenericSpec(resourceData)?.template?.spec?.initContainers"
           class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-text-primary mb-3">Job Template Init Containers</h3>
+          <h3 class="text-sm font-semibold text-status-warning mb-3">Job Template Init Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).template.spec.initContainers" :key="container.name"
                  class="bg-surface-secondary rounded border border-border-primary p-3">
@@ -381,7 +376,7 @@
           v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.initContainers"
           class="elevated-surface rounded-lg p-4"
         >
-          <h3 class="text-sm font-semibold text-text-primary mb-3">Init Containers</h3>
+          <h3 class="text-sm font-semibold text-status-warning mb-3">Init Containers</h3>
           <div class="space-y-3">
             <div v-for="container in getGenericSpec(resourceData).initContainers" :key="container.name"
                  class="bg-surface-secondary rounded border border-border-primary p-3">

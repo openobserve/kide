@@ -4,7 +4,7 @@
     <div v-if="loading" class="flex items-center justify-center h-32">
       <div class="text-center">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Loading pods on node...</p>
+        <p class="text-sm text-text-secondary">Loading pods on node...</p>
       </div>
     </div>
 
@@ -16,7 +16,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        <p class="text-sm text-status-error">{{ error }}</p>
         <button 
           @click="fetchNodePods" 
           class="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
@@ -27,26 +27,26 @@
     </div>
 
     <!-- Node Info Header -->
-    <div v-else-if="nodeName" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Node: {{ nodeName }}</h3>
-      <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">{{ pods.length }} pod{{ pods.length !== 1 ? 's' : '' }} running on this node</p>
+    <div v-else-if="nodeName" class="bg-surface-tertiary rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-text-primary mb-2">Node: {{ nodeName }}</h3>
+      <p class="text-xs text-text-secondary mb-3">{{ pods.length }} pod{{ pods.length !== 1 ? 's' : '' }} running on this node</p>
     </div>
 
     <!-- Pods Table -->
-    <div v-if="!loading && !error && pods.length > 0" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+    <div v-if="!loading && !error && pods.length > 0" class="bg-surface-primary rounded-lg border border-border-primary overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full bg-white dark:bg-gray-800" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
+        <table class="min-w-full bg-surface-primary" style="table-layout: fixed;" :style="{ width: table.getTotalSize() + 'px' }">
           <!-- Table Header -->
-          <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <thead class="bg-surface-tertiary border-b border-border-primary">
             <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
               <th
                 v-for="header in headerGroup.headers"
                 :key="header.id"
                 :colSpan="header.colSpan"
                 :style="{ width: header.getSize() + 'px' }"
-                class="px-3 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider relative select-none"
+                class="px-3 py-1 text-left text-xs font-medium text-text-secondary uppercase tracking-wider relative select-none"
                 :class="[
-                  header.column.getCanSort() ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 group' : '',
+                  header.column.getCanSort() ? 'cursor-pointer hover:text-text-primary group' : '',
                 ]"
                 @click="header.column.getToggleSortingHandler()?.($event)"
               >
@@ -58,19 +58,19 @@
                   <!-- Sort indicator -->
                   <div v-if="header.column.getCanSort()" class="w-5 h-5">
                     <svg v-if="header.column.getIsSorted() === 'asc'" 
-                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
+                         class="w-5 h-5 text-text-primary" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else-if="header.column.getIsSorted() === 'desc'" 
-                         class="w-5 h-5 text-gray-900 dark:text-gray-100" 
+                         class="w-5 h-5 text-text-primary" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else 
-                         class="w-5 h-5 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100" 
+                         class="w-5 h-5 text-text-muted opacity-0 group-hover:opacity-100" 
                          fill="currentColor" 
                          viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -93,18 +93,18 @@
           </thead>
 
           <!-- Table Body -->
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="bg-surface-primary divide-y divide-border-primary">
             <tr
               v-for="row in table.getRowModel().rows"
               :key="row.id"
-              class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+              class="hover:bg-surface-secondary cursor-pointer transition-colors"
               @click="handleViewPod(row.original)"
             >
               <td
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
                 :style="{ width: cell.column.getSize() + 'px' }"
-                class="px-3 py-0.5 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-gray-600 dark:text-gray-400"
+                class="px-3 py-0.5 whitespace-nowrap text-sm overflow-hidden text-ellipsis text-text-secondary"
               >
                 <FlexRender
                   :render="cell.column.columnDef.cell"
@@ -120,24 +120,24 @@
     <!-- Empty State -->
     <div v-else-if="!loading && !error && pods.length === 0" class="flex items-center justify-center h-32">
       <div class="text-center">
-        <div class="text-gray-400 dark:text-gray-500 mb-2">
+        <div class="text-text-muted mb-2">
           <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V6a2 2 0 012-2h2a2 2 0 012 2v1M6 7h.01M6 11h.01"/>
           </svg>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">No pods found on this node</p>
+        <p class="text-sm text-text-secondary">No pods found on this node</p>
       </div>
     </div>
 
     <!-- Not a Node Resource -->
     <div v-else-if="!loading && !error && !nodeName" class="flex items-center justify-center h-32">
       <div class="text-center">
-        <div class="text-gray-400 dark:text-gray-500 mb-2">
+        <div class="text-text-muted mb-2">
           <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Node details are only available for Node resources</p>
+        <p class="text-sm text-text-secondary">Node details are only available for Node resources</p>
       </div>
     </div>
   </div>
@@ -201,7 +201,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ getValue }) => {
         const name = getValue() as string || 'Unknown'
         return h('div', {
-          class: 'text-sm text-gray-900 dark:text-gray-100 truncate',
+          class: 'text-sm text-text-primary truncate',
           title: name
         }, name)
       },
@@ -217,7 +217,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ getValue }) => {
         const namespace = getValue() as string || 'default'
         return h('span', {
-          class: 'inline-flex items-center px-1.5 py-0 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs rounded-full'
+          class: 'inline-flex items-center px-1.5 py-0 bg-surface-secondary text-text-primary text-xs rounded-full'
         }, namespace)
       },
       size: savedSizes.namespace || 120,
@@ -264,7 +264,7 @@ const columns = computed((): ColumnDef<any>[] => {
             ])
           ),
           h('span', {
-            class: 'text-xs text-gray-500 dark:text-gray-400 ml-1'
+            class: 'text-xs text-text-secondary ml-1'
           }, containerStatuses.length.toString())
         ])
       },
@@ -286,7 +286,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ row }) => {
         const restarts = getTotalRestarts(row.original)
         return h('div', {
-          class: 'text-sm text-gray-600 dark:text-gray-400'
+          class: 'text-sm text-text-secondary'
         }, restarts.toString())
       },
       size: savedSizes.restarts || 80,
@@ -301,7 +301,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ row }) => {
         const cpu = getCpuRequests(row.original)
         return h('div', {
-          class: 'text-sm text-gray-600 dark:text-gray-400'
+          class: 'text-sm text-text-secondary'
         }, cpu)
       },
       size: savedSizes.cpu || 80,
@@ -316,7 +316,7 @@ const columns = computed((): ColumnDef<any>[] => {
       cell: ({ row }) => {
         const memory = getMemoryRequests(row.original)
         return h('div', {
-          class: 'text-sm text-gray-600 dark:text-gray-400'
+          class: 'text-sm text-text-secondary'
         }, memory)
       },
       size: savedSizes.memory || 80,
@@ -332,12 +332,12 @@ const columns = computed((): ColumnDef<any>[] => {
         const podIP = getValue() as string
         if (podIP) {
           return h('div', {
-            class: 'text-sm text-gray-600 dark:text-gray-400 font-mono',
+            class: 'text-sm text-text-secondary font-mono',
             title: podIP
           }, podIP)
         }
         return h('span', {
-          class: 'text-gray-400 dark:text-gray-500 text-sm'
+          class: 'text-text-muted text-sm'
         }, '-')
       },
       size: savedSizes.podIP || 120,
@@ -353,7 +353,7 @@ const columns = computed((): ColumnDef<any>[] => {
         const timestamp = getValue() as string
         const age = getAge(timestamp)
         return h('div', {
-          class: 'text-sm text-gray-500 dark:text-gray-400',
+          class: 'text-sm text-text-secondary',
           title: timestamp ? new Date(timestamp).toLocaleString() : undefined
         }, age)
       },

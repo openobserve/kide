@@ -1,18 +1,18 @@
 <template>
-  <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ resourceKind }} Configuration</h3>
+  <div class="bg-surface-tertiary rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-status-warning mb-3">{{ resourceKind }} Configuration</h3>
     <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div v-if="spec?.replicas !== undefined">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Desired Replicas</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+        <dt class="text-xs font-medium text-text-secondary">Desired Replicas</dt>
+        <dd class="text-sm text-text-primary flex items-center space-x-2">
           <span>{{ currentReplicas }}</span>
-          <span v-if="isScaling" class="text-xs text-blue-600 dark:text-blue-400 animate-pulse">Scaling...</span>
+          <span v-if="isScaling" class="text-xs text-accent-primary animate-pulse">Scaling...</span>
           <!-- Scale controls for scalable resources -->
           <div v-if="isScalable" class="flex items-center space-x-1">
             <button
               @click="scaleDown"
               :disabled="currentReplicas <= 0 || isScaling"
-              class="w-6 h-6 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs font-bold transition-colors"
+              class="w-6 h-6 rounded bg-surface-secondary hover:bg-surface-tertiary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs font-bold transition-colors text-text-primary"
               title="Scale down"
             >
               −
@@ -20,7 +20,7 @@
             <button
               @click="scaleUp"
               :disabled="isScaling"
-              class="w-6 h-6 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs font-bold transition-colors"
+              class="w-6 h-6 rounded bg-surface-secondary hover:bg-surface-tertiary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs font-bold transition-colors text-text-primary"
               title="Scale up"
             >
               +
@@ -29,43 +29,43 @@
         </dd>
       </div>
       <div v-if="status?.readyReplicas !== undefined">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Ready Replicas</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+        <dt class="text-xs font-medium text-text-secondary">Ready Replicas</dt>
+        <dd class="text-sm text-text-primary flex items-center space-x-2">
           <span>{{ optimisticReadyReplicas }}</span>
-          <span v-if="isScaling && optimisticReadyReplicas !== currentReplicas" class="text-xs text-orange-600 dark:text-orange-400">
+          <span v-if="isScaling && optimisticReadyReplicas !== currentReplicas" class="text-xs text-status-warning">
             → {{ currentReplicas }}
           </span>
         </dd>
       </div>
       <div v-if="status?.availableReplicas !== undefined">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Available Replicas</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+        <dt class="text-xs font-medium text-text-secondary">Available Replicas</dt>
+        <dd class="text-sm text-text-primary flex items-center space-x-2">
           <span>{{ optimisticAvailableReplicas }}</span>
-          <span v-if="isScaling && optimisticAvailableReplicas !== currentReplicas" class="text-xs text-orange-600 dark:text-orange-400">
+          <span v-if="isScaling && optimisticAvailableReplicas !== currentReplicas" class="text-xs text-status-warning">
             → {{ currentReplicas }}
           </span>
         </dd>
       </div>
       <div v-if="status?.updatedReplicas !== undefined">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Updated Replicas</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+        <dt class="text-xs font-medium text-text-secondary">Updated Replicas</dt>
+        <dd class="text-sm text-text-primary flex items-center space-x-2">
           <span>{{ status.updatedReplicas }}</span>
-          <span v-if="isScaling && status.updatedReplicas !== currentReplicas" class="text-xs text-orange-600 dark:text-orange-400">
+          <span v-if="isScaling && status.updatedReplicas !== currentReplicas" class="text-xs text-status-warning">
             → {{ currentReplicas }}
           </span>
         </dd>
       </div>
       <div v-if="spec?.selector?.matchLabels">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Selector</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
+        <dt class="text-xs font-medium text-text-secondary">Selector</dt>
+        <dd class="text-sm text-text-primary">
           <div v-for="(value, key) in spec?.selector?.matchLabels" :key="key" class="text-xs">
-            <span class="font-mono">{{ key }}: {{ value }}</span>
+            <span class="font-mono"><span class="text-status-success">{{ key }}</span>: {{ value }}</span>
           </div>
         </dd>
       </div>
       <div v-if="spec?.updateStrategy || spec?.strategy">
-        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Update Strategy</dt>
-        <dd class="text-sm text-gray-900 dark:text-gray-100">
+        <dt class="text-xs font-medium text-text-secondary">Update Strategy</dt>
+        <dd class="text-sm text-text-primary">
           {{ (spec?.updateStrategy || spec?.strategy)?.type || 'RollingUpdate' }}
         </dd>
       </div>

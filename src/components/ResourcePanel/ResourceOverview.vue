@@ -2,7 +2,7 @@
   <div class="h-full overflow-y-auto p-6 space-y-6">
     <!-- Resource Information -->
     <div class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">{{ resourceKind }} Information</h3>
+      <h3 class="text-sm font-semibold text-status-warning mb-3">{{ resourceKind }} Information</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <dt class="text-xs font-medium text-text-secondary">Name</dt>
@@ -32,7 +32,7 @@
 
     <!-- Ingress Hosts -->
     <div v-if="resourceKind === 'Ingress' && getGenericSpec(resourceData)?.rules?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Hosts
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericSpec(resourceData).rules.length }})</span>
       </h3>
@@ -113,7 +113,7 @@
 
     <!-- Labels -->
     <div v-if="resourceData?.metadata?.labels" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Labels
         <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(resourceData.metadata.labels).length }})</span>
       </h3>
@@ -141,7 +141,7 @@
 
     <!-- Annotations -->
     <div v-if="resourceData?.metadata?.annotations && Object.keys(resourceData.metadata.annotations).length > 0" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Annotations
         <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(resourceData.metadata.annotations).length }})</span>
       </h3>
@@ -209,7 +209,7 @@
 
     <!-- Pod Tolerations -->
     <div v-if="resourceKind === 'Pod' && getGenericSpec(resourceData)?.tolerations?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Tolerations
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericSpec(resourceData).tolerations.length }})</span>
       </h3>
@@ -289,7 +289,7 @@
 
     <!-- CronJob-specific configuration -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.spec" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Configuration</h3>
+      <h3 class="text-sm font-semibold text-status-warning mb-3">CronJob Configuration</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Schedule -->
         <div>
@@ -358,7 +358,7 @@
 
     <!-- Job Configuration -->
     <div v-if="resourceKind === 'Job' && resourceData?.spec" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">Job Configuration</h3>
+      <h3 class="text-sm font-semibold text-status-warning mb-3">Job Configuration</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Completions -->
         <div>
@@ -431,7 +431,7 @@
 
     <!-- Job Conditions -->
     <div v-if="resourceKind === 'Job' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Job Conditions
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
@@ -495,7 +495,7 @@
 
     <!-- PodDisruptionBudget Conditions -->
     <div v-if="resourceKind === 'PodDisruptionBudget' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Conditions
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
@@ -559,7 +559,7 @@
 
     <!-- Node Addresses -->
     <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.addresses?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Addresses
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).addresses.length }})</span>
       </h3>
@@ -595,7 +595,7 @@
 
     <!-- Node Capacity -->
     <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.capacity" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Capacity
         <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(getGenericStatus(resourceData).capacity).length }} resources)</span>
         <Tooltip content="Total node resources available, including system reserved resources" side="top">
@@ -629,7 +629,7 @@
 
     <!-- Node Allocatable -->
     <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.allocatable" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Allocatable
         <span class="text-xs font-normal text-text-secondary ml-2">({{ Object.keys(getGenericStatus(resourceData).allocatable).length }} resources)</span>
         <Tooltip content="Resources available for scheduling pods after system reservations (kubelet, kube-proxy, OS, etc.)" side="top">
@@ -663,7 +663,7 @@
 
     <!-- Node Conditions -->
     <div v-if="resourceKind === 'Node' && getGenericStatus(resourceData)?.conditions?.length" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Conditions
         <span class="text-xs font-normal text-text-secondary ml-2">({{ getGenericStatus(resourceData).conditions.length }})</span>
       </h3>
@@ -727,7 +727,7 @@
 
     <!-- Role Rules -->
     <div v-if="resourceKind === 'Role' && (resourceData?.roleSpec?.rules || resourceData?.completeObject?.rules)" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Rules
         <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.roleSpec?.rules || resourceData?.completeObject?.rules || []).length }})</span>
       </h3>
@@ -798,7 +798,7 @@
 
     <!-- ClusterRole Rules -->
     <div v-if="resourceKind === 'ClusterRole' && (resourceData?.clusterRoleSpec?.rules || resourceData?.completeObject?.rules)" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Rules
         <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.clusterRoleSpec?.rules || resourceData?.completeObject?.rules || []).length }})</span>
       </h3>
@@ -869,7 +869,7 @@
 
     <!-- RoleBinding Subjects -->
     <div v-if="resourceKind === 'RoleBinding' && (resourceData?.roleBindingSpec?.subjects || resourceData?.completeObject?.subjects)" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Subjects
         <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.roleBindingSpec?.subjects || resourceData?.completeObject?.subjects || []).length }})</span>
       </h3>
@@ -938,7 +938,7 @@
 
     <!-- ClusterRoleBinding Subjects -->
     <div v-if="resourceKind === 'ClusterRoleBinding' && (resourceData?.clusterRoleBindingSpec?.subjects || resourceData?.completeObject?.subjects)" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">
+      <h3 class="text-sm font-semibold text-status-warning mb-3">
         Subjects
         <span class="text-xs font-normal text-text-secondary ml-2">({{ (resourceData?.clusterRoleBindingSpec?.subjects || resourceData?.completeObject?.subjects || []).length }})</span>
       </h3>
@@ -1007,7 +1007,7 @@
 
     <!-- CronJob Status -->
     <div v-if="resourceKind === 'CronJob' && resourceData?.status" class="elevated-surface rounded-lg p-4">
-      <h3 class="text-sm font-semibold text-text-primary mb-3">CronJob Status</h3>
+      <h3 class="text-sm font-semibold text-status-warning mb-3">CronJob Status</h3>
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <!-- Last Schedule Time -->
         <div>

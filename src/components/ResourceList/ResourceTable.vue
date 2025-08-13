@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 overflow-auto resource-table table-background" 
+  <div class="flex-1 overflow-auto resource-table table-background dark-scrollbar" 
        @mouseenter="() => $emit('setMouseOverTable', true)" 
        @mouseleave="() => { $emit('setMouseOverTable', false); forceClearHoveredRow('table-exit'); }"
        @scroll="() => forceClearHoveredRow('scroll')">

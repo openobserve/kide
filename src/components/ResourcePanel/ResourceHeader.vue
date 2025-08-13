@@ -1,16 +1,16 @@
 <template>
-  <div class="flex-none px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+  <div class="flex-none px-6 py-4 border-b border-border-primary bg-surface-secondary">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <ResourceIcons :kind="resourceKind" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <ResourceIcons :kind="resourceKind" class="w-6 h-6 text-accent-primary" />
         <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ resourceData?.metadata?.name || `${resourceKind} Details` }}</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ getResourceSubtitle() }}</p>
+          <h2 class="text-lg font-semibold text-text-primary">{{ resourceData?.metadata?.name || `${resourceKind} Details` }}</h2>
+          <p class="text-sm text-text-secondary">{{ getResourceSubtitle() }}</p>
         </div>
       </div>
       <button @click="$emit('close')" 
-              class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="p-2 rounded-md hover:bg-surface-tertiary transition-colors">
+        <svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
@@ -28,7 +28,7 @@
         ]"></div>
         {{ getResourceStatus() }}
       </span>
-      <span class="text-xs text-gray-400 dark:text-gray-500">
+      <span class="text-xs text-text-muted">
         Created {{ formatTime(resourceData?.metadata?.creationTimestamp) }}
       </span>
     </div>
