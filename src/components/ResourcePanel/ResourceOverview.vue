@@ -269,6 +269,13 @@
       :spec="getGenericSpec(resourceData)"
     />
 
+    <!-- Ingress-specific configuration -->
+    <IngressConfiguration
+      v-if="resourceKind === 'Ingress' && getGenericSpec(resourceData)"
+      :spec="getGenericSpec(resourceData)"
+      :status="getGenericStatus(resourceData)"
+    />
+
     <!-- Deployment/ReplicaSet-specific configuration -->
     <WorkloadConfiguration
       v-if="['Deployment', 'ReplicaSet', 'StatefulSet', 'DaemonSet'].includes(resourceKind) && getGenericSpec(resourceData)"
@@ -1068,6 +1075,7 @@ import { useResourceStatus } from '@/composables/useResourceStatus'
 import PodConditions from './PodConditions.vue'
 import PodVolumes from './PodVolumes.vue'
 import ServiceConfiguration from './ServiceConfiguration.vue'
+import IngressConfiguration from './IngressConfiguration.vue'
 import WorkloadConfiguration from './WorkloadConfiguration.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 

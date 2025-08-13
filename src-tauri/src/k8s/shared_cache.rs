@@ -211,6 +211,7 @@ impl SharedWatchCache {
         use kube::api::ListParams;
         use k8s_openapi::api::core::v1::{Pod, Service, Node, ConfigMap, Secret, Namespace};
         use k8s_openapi::api::apps::v1::{Deployment, ReplicaSet, StatefulSet, DaemonSet};
+        use k8s_openapi::api::networking::v1::Ingress;
         
         let client = self.client.get_client().await?;
         let lp = ListParams::default();
@@ -362,6 +363,22 @@ impl SharedWatchCache {
                 let mut items = Vec::new();
                 for resource in list.items {
                     if let Ok(item) = convert_to_list_item(&resource, "daemonsets") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
+            "ingresses" => {
+                let api: Api<Ingress> = if let Some(namespace) = &scope.namespace {
+                    Api::namespaced(client, namespace)
+                } else {
+                    Api::all(client)
+                };
+                
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "ingresses") {
                         items.push(item);
                     }
                 }

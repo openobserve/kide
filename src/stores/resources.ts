@@ -174,7 +174,7 @@ export const useResourceStore = defineStore('resources', (): {
     }
     
     // Handle InitialSyncComplete specially - always process this even during namespace changes
-    if (typeof event === 'string' && event === 'initialSyncComplete') {
+    if (event === 'InitialSyncComplete') {
       hasInitialData.value = true
       loading.value = false
       isChangingNamespaces.value = false

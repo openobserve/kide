@@ -2,9 +2,9 @@
 //!
 //! This module tests that our refactored components work together correctly.
 
-use kide_lib::errors::{AppError, K8sError};
+use kide_lib::errors::{AppError, ConfigError, StateError, K8sError};
 use kide_lib::k8s::{RESOURCE_REGISTRY, WatchLifecycleManager, WatchEventHandler, WatchDispatcher};
-use kide_lib::commands::command_wrapper::*;
+use kide_lib::commands::{K8sCommand, StateCommand};
 use kide_lib::state::AppState;
 use std::sync::Arc;
 
@@ -140,7 +140,7 @@ fn test_error_conversion_integration() {
 #[tokio::test]
 async fn test_command_validation_integration() {
     // Test that command validation works across the system
-    use kide_lib::commands::resource_commands::*;
+    use kide_lib::commands::resource_commands::{ListResourcesCommand, GetResourceCommand};
     
     // Valid resource command should pass validation
     let valid_command = ListResourcesCommand {
@@ -206,7 +206,7 @@ fn test_type_safety_improvements() {
     let _watch_error = K8sError::watch_failed("pods", "test failure");
     
     // Error helpers should work
-    use kide_lib::errors::*;
+    // Error types are available for testing
     let _config_error = ConfigError::validation_failed("test_field", "test message");
     let _state_error = StateError::manager_not_initialized("WatchManager");
     
@@ -215,6 +215,6 @@ fn test_type_safety_improvements() {
 
 // Import the command modules to ensure they compile
 #[allow(unused_imports)]
-use kide_lib::commands::{resource_commands, k8s_commands, command_wrapper};
+use kide_lib::commands::{resource_commands, k8s_commands};
 #[allow(unused_imports)]
 use kide_lib::k8s::{resource_registry, watch_components};
