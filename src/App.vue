@@ -1,8 +1,8 @@
 <template>
   <div class="h-screen app-background flex flex-col overflow-hidden">
-    <!-- Cluster Tabs at the top -->
+    <!-- Custom Title Bar with cluster dropdown -->
     <div class="flex-none">
-      <ClusterHotbar 
+      <TitleBar 
         :selectedContext="clusterStore.selectedContext"
         :connectionStatus="clusterStore.contextConnectionStatus"
         @context-selected="handleContextSelect"
@@ -54,7 +54,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import ClusterHotbar from './components/ClusterHotbar.vue'
+import TitleBar from './components/TitleBar.vue'
 import ResourceNavigation from './components/ResourceNavigation.vue'
 import MainContent from './components/MainContent.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'

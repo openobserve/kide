@@ -80,7 +80,7 @@
             v-for="cell in row.getVisibleCells()"
             :key="cell.id"
             :style="{ width: cell.column.getSize() + 'px' }"
-            class="px-3 py-1 whitespace-nowrap text-sm overflow-hidden text-ellipsis table-cell-text"
+            class="px-3 py-0.5 whitespace-nowrap text-sm overflow-hidden text-ellipsis table-cell-text"
             :data-column-id="cell.column.id"
           >
             <FlexRender
