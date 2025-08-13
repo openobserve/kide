@@ -5,6 +5,7 @@ use k8s::{K8sClient, K8sContext, LogStreamManager, WatchManager, get_resource_ca
 use security::{ShellValidator, InputSanitizer};
 use std::sync::Arc;
 use std::collections::HashMap;
+use std::env;
 use tauri::{AppHandle, State, Emitter};
 use tokio::sync::Mutex;
 
@@ -995,8 +996,123 @@ async fn get_node_pods(
     }))
 }
 
+/// Get environment variables from the user's shell (equivalent to shell-env npm package)
+/// This solves the issue where GUI apps don't inherit shell environment from dotfiles
+fn get_shell_environment() -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+    use std::process::Command;
+    
+    // Determine user's default shell
+    let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    
+    // Command to source shell profile and print environment
+    let mut cmd = Command::new(&shell);
+    
+    // Use different approaches based on shell type
+    if shell.contains("zsh") {
+        cmd.args(&["-l", "-i", "-c", "env"]);
+    } else if shell.contains("bash") {
+        cmd.args(&["-l", "-i", "-c", "env"]);
+    } else {
+        // Fallback for other shells
+        cmd.args(&["-c", "env"]);
+    }
+    
+    // Execute shell command to get environment
+    let output = cmd.output()?;
+    
+    if !output.status.success() {
+        return Err(format!("Shell command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+    }
+    
+    // Parse environment variables from output
+    let env_output = String::from_utf8(output.stdout)?;
+    let mut shell_env = HashMap::new();
+    
+    for line in env_output.lines() {
+        if let Some(eq_pos) = line.find('=') {
+            let key = &line[..eq_pos];
+            let value = &line[eq_pos + 1..];
+            
+            // Only include if key looks valid (alphanumeric + underscore)
+            if key.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                shell_env.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+    
+    Ok(shell_env)
+}
+
+/// Setup enhanced environment by inheriting shell environment (like Lens does)
+/// This solves the common issue where packaged desktop apps don't inherit
+/// the full shell environment that includes custom PATH modifications.
+fn setup_environment() {
+    println!("🔧 Setting up shell environment for authentication tools...");
+    
+    // First, try to get shell environment (like shell-env npm package)
+    match get_shell_environment() {
+        Ok(shell_env) => {
+            // Apply shell environment variables, particularly PATH
+            for (key, value) in shell_env.iter() {
+                // Only set important environment variables
+                match key.as_str() {
+                    "PATH" | "HOME" | "USER" | "AWS_PROFILE" | "AWS_DEFAULT_REGION" | 
+                    "GOOGLE_APPLICATION_CREDENTIALS" | "KUBECONFIG" => {
+                        env::set_var(key, value);
+                        if key == "PATH" {
+                            println!("🔧 Inherited shell PATH: {}", value);
+                        }
+                    }
+                    _ if key.starts_with("AWS_") || key.starts_with("GOOGLE_") || 
+                         key.starts_with("AZURE_") || key.starts_with("KUBE") => {
+                        env::set_var(key, value);
+                    }
+                    _ => {} // Skip other variables
+                }
+            }
+            
+            println!("✅ Successfully inherited shell environment");
+        }
+        Err(e) => {
+            println!("⚠️  Could not get shell environment ({}), falling back to manual PATH enhancement", e);
+            
+            // Fallback to manual PATH enhancement if shell method fails
+            let current_path = env::var("PATH").unwrap_or_default();
+            
+            let mut additional_paths = vec![
+                "/usr/local/bin".to_string(),
+                "/opt/homebrew/bin".to_string(),
+                "/usr/bin".to_string(),
+                "/bin".to_string(),
+                "/usr/local/aws-cli/v2/current/bin".to_string(),
+                "/snap/bin".to_string(),
+                "/usr/local/google-cloud-sdk/bin".to_string(),
+            ];
+            
+            if let Ok(home) = env::var("HOME") {
+                additional_paths.push(format!("{}/.local/bin", home));
+            }
+            
+            let mut all_paths: Vec<String> = additional_paths.into_iter()
+                .filter(|path| !current_path.contains(path))
+                .collect();
+            
+            if !current_path.is_empty() {
+                all_paths.push(current_path);
+            }
+            
+            let enhanced_path = all_paths.join(":");
+            env::set_var("PATH", &enhanced_path);
+            
+            println!("🔧 Fallback PATH: {}", enhanced_path);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Setup enhanced environment before initializing Kubernetes client
+    setup_environment();
     let k8s_client = K8sClient::new();
     let app_state = AppState {
         k8s_client,
