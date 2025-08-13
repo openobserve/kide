@@ -93,7 +93,7 @@ pub async fn update_resource(
     namespace: Option<String>,
     yaml_content: String,
 ) -> Result<(), String> {
-    use kube::api::{Api, Patch, PatchParams};
+    // Note: We use kubectl apply instead of direct Kube API for generic resource updating
     
     // Validate inputs
     state.input_sanitizer.validate_resource_name(&resource_name)
@@ -107,57 +107,49 @@ pub async fn update_resource(
     state.input_sanitizer.validate_yaml_content(&yaml_content)
         .map_err(|e| format!("Invalid YAML content: {}", e))?;
     
-    let client = state.k8s_client.get_client().await.map_err(|e| e.to_string())?;
+    // We don't need the client for kubectl apply, but validate the connection exists
+    let _client = state.k8s_client.get_client().await.map_err(|e| e.to_string())?;
     
-    // Parse the YAML content to validate it
+    // Validate YAML syntax only - kubectl apply will handle the rest
     let _yaml_value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml_content)
-        .map_err(|e| format!("Invalid YAML: {}", e))?;
+        .map_err(|e| format!("Invalid YAML syntax: {}", e))?;
     
-    // Convert to JSON for Kubernetes API
-    let mut json_value: serde_json::Value = serde_json::to_value(&_yaml_value)
-        .map_err(|e| format!("Failed to convert YAML to JSON: {}", e))?;
+    // Use generic update operation with kubectl apply for all resource types
+    // This approach works for any Kubernetes resource without needing specific type handling
+    use std::process::Command;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
     
-    // Clean the JSON by removing system-managed fields that cannot be updated
-    if let Some(metadata) = json_value.get_mut("metadata").and_then(|m| m.as_object_mut()) {
-        // Remove fields that must be nil or are system-managed
-        metadata.remove("managedFields");
-        metadata.remove("resourceVersion");
-        metadata.remove("generation");
-        metadata.remove("uid");
-        metadata.remove("selfLink");
-        metadata.remove("creationTimestamp");
-        metadata.remove("deletionTimestamp");
-        metadata.remove("deletionGracePeriodSeconds");
-        metadata.remove("finalizers");
-        
-        // Remove ownerReferences as they should not be modified during updates
-        metadata.remove("ownerReferences");
+    // Write YAML content to a temporary file
+    let mut temp_file = NamedTempFile::new()
+        .map_err(|e| format!("Failed to create temporary file: {}", e))?;
+    
+    temp_file.write_all(yaml_content.as_bytes())
+        .map_err(|e| format!("Failed to write YAML to temporary file: {}", e))?;
+    
+    // Build kubectl apply command
+    let mut cmd = Command::new("kubectl");
+    cmd.arg("apply")
+       .arg("-f")
+       .arg(temp_file.path());
+    
+    // Add namespace if provided
+    if let Some(ref ns) = namespace {
+        cmd.arg("-n").arg(ns);
     }
     
-    // Remove status field as it's read-only and managed by controllers
-    if json_value.get("status").is_some() {
-        json_value.as_object_mut().unwrap().remove("status");
+    // Execute kubectl apply
+    let output = cmd.output()
+        .map_err(|e| format!("Failed to execute kubectl apply: {}", e))?;
+    
+    if !output.status.success() {
+        let error_msg = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("kubectl apply failed: {}", error_msg));
     }
     
-    // TODO: Use generic update operation when implemented in resource_api
-    // For now, handle specific resource types manually
-    match resource_kind.as_str() {
-        "Pod" => {
-            use k8s_openapi::api::core::v1::Pod;
-            let api: Api<Pod> = if let Some(ref ns) = namespace {
-                Api::namespaced(client, ns)
-            } else {
-                return Err("Namespace is required for Pod resources".to_string());
-            };
-            let patch_params = PatchParams::apply("kide-client").force();
-            let patch = Patch::Apply(&json_value);
-            api.patch(&resource_name, &patch_params, &patch)
-                .await
-                .map_err(|e| format!("Failed to update Pod: {}", e))?;
-        },
-        // Add other resource types as needed
-        _ => return Err(format!("Update operation not yet supported for resource kind: {}", resource_kind)),
-    }
+    // Log success message
+    let success_msg = String::from_utf8_lossy(&output.stdout);
+    println!("✅ kubectl apply output: {}", success_msg.trim());
     
     println!("✅ Successfully updated {} '{}'{}",
         resource_kind,

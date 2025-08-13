@@ -1,17 +1,17 @@
 <template>
-  <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Conditions</h3>
+  <div class="bg-gray-700 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-gray-100 mb-3">Conditions</h3>
     <div class="space-y-2">
       <div v-for="condition in sortedConditions" :key="condition.type"
-           class="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+           class="flex items-center justify-between py-2 px-3 bg-gray-800 rounded border border-gray-600">
         <div class="flex items-center space-x-2">
           <div :class="[
             'w-2 h-2 rounded-full',
             condition.status === 'True' ? 'bg-green-500' : 'bg-red-500'
           ]"></div>
-          <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ condition.type }}</span>
+          <span class="text-sm font-medium text-gray-100">{{ condition.type }}</span>
         </div>
-        <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatTime(condition.lastTransitionTime) }}</span>
+        <span class="text-xs text-gray-400">{{ formatTime(condition.lastTransitionTime) }}</span>
       </div>
     </div>
   </div>

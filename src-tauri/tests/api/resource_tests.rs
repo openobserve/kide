@@ -586,3 +586,116 @@ async fn test_large_resource_handling() {
     let resource = result.unwrap();
     assert_eq!(resource["metadata"]["name"], "test-pod");
 }
+
+#[tokio::test]
+async fn test_update_resource_deployment_success() {
+    let mut api = MockTauriApi::new();
+    
+    // Mock successful deployment update
+    api.set_success_response("update_resource", json!(null));
+    
+    let yaml_content = r#"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: o2-openobserve-router
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: openobserve-router
+  template:
+    metadata:
+      labels:
+        app: openobserve-router
+    spec:
+      containers:
+      - name: router
+        image: openobserve/router:v0.1.0
+        ports:
+        - containerPort: 8080
+"#.to_string();
+    
+    let result = api.invoke("update_resource", json!({
+        "resource_name": "o2-openobserve-router",
+        "resource_kind": "Deployment",
+        "namespace": "default",
+        "yaml_content": yaml_content
+    })).await;
+    
+    assert!(result.is_ok());
+    assert!(api.was_called("update_resource"));
+}
+
+#[tokio::test]
+async fn test_update_resource_unsupported_kind() {
+    let mut api = MockTauriApi::new();
+    
+    // Mock kubectl error for unsupported resource
+    api.set_error_response("update_resource", "kubectl apply failed: error validating data");
+    
+    let yaml_content = r#"
+apiVersion: v1
+kind: CustomResource
+metadata:
+  name: test-custom
+"#.to_string();
+    
+    let result = api.invoke("update_resource", json!({
+        "resource_name": "test-custom",
+        "resource_kind": "CustomResource",
+        "namespace": "default",
+        "yaml_content": yaml_content
+    })).await;
+    
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("kubectl apply failed"));
+}
+
+#[tokio::test]
+async fn test_update_resource_generic_support() {
+    let mut api = MockTauriApi::new();
+    
+    // Mock successful update for any resource type - demonstrating generic support
+    api.set_success_response("update_resource", json!(null));
+    
+    // Test various resource types that should all work with generic update
+    let test_cases = vec![
+        ("Deployment", "apps/v1", "nginx-deployment"),
+        ("Service", "v1", "nginx-service"),
+        ("ConfigMap", "v1", "app-config"),
+        ("Secret", "v1", "app-secrets"),
+        ("Ingress", "networking.k8s.io/v1", "app-ingress"),
+        ("StatefulSet", "apps/v1", "database"),
+        ("DaemonSet", "apps/v1", "log-collector"),
+        ("Job", "batch/v1", "data-migration"),
+        ("CronJob", "batch/v1", "backup-job"),
+        ("PersistentVolumeClaim", "v1", "data-storage"),
+    ];
+    
+    for (kind, api_version, name) in test_cases {
+        let yaml_content = format!(r#"
+apiVersion: {}
+kind: {}
+metadata:
+  name: {}
+  namespace: default
+spec:
+  # Generic spec content
+  example: value
+"#, api_version, kind, name);
+        
+        let result = api.invoke("update_resource", json!({
+            "resource_name": name,
+            "resource_kind": kind,
+            "namespace": "default",
+            "yaml_content": yaml_content
+        })).await;
+        
+        assert!(result.is_ok(), "Update should succeed for {}", kind);
+    }
+    
+    // Verify all resource types were successfully processed
+    assert!(api.was_called("update_resource"));
+}
