@@ -53,83 +53,68 @@
       <div v-show="activeTab === 'data'" class="h-full overflow-y-auto p-6 space-y-6">
         <div v-if="(resourceKind === 'Secret' || resourceKind === 'ConfigMap') && getResourceData()" class="elevated-surface rounded-lg p-4">
           <h3 class="text-sm font-semibold text-text-primary mb-3">{{ resourceKind === 'Secret' ? 'Secret Data' : 'ConfigMap Data' }}</h3>
-          <div class="space-y-2">
-            <div v-for="(value, key) in getResourceData()" :key="key"
-                 :class="[
-                   'bg-surface-secondary rounded border p-3',
-                   resourceKind === 'Secret' 
-                     ? 'border-green-700' 
-                     : 'border-blue-700'
-                 ]">
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span :class="[
-                      'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                      resourceKind === 'Secret'
-                        ? 'status-badge-success'
-                        : 'status-badge-info'
-                    ]">
-                      {{ key }}
+          
+          <!-- Compact key-value layout similar to environment variables -->
+          <div class="bg-gray-700 rounded-lg p-3">
+            <div v-for="(value, key) in getResourceData()" :key="key" 
+                 class="flex items-start justify-between py-2 border-b border-gray-600 last:border-b-0 gap-4">
+              
+              <!-- Left side: Key and controls -->
+              <div class="flex items-center gap-2 flex-shrink-0 min-w-0">
+                <span :class="[
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium font-mono',
+                  resourceKind === 'Secret'
+                    ? 'bg-green-900/30 text-green-300'
+                    : 'bg-blue-900/30 text-blue-300'
+                ]">
+                  {{ key }}
+                </span>
+                
+                <!-- Secret visibility toggle -->
+                <button
+                  v-if="resourceKind === 'Secret'"
+                  @click="toggleDataVisibility(key)"
+                  :class="[
+                    'text-xs px-2 py-0.5 rounded transition-colors',
+                    visibleData[key] 
+                      ? 'bg-red-900/30 text-red-300 hover:opacity-80' 
+                      : 'bg-yellow-900/30 text-yellow-300 hover:opacity-80'
+                  ]"
+                >
+                  {{ visibleData[key] ? 'Hide' : 'Show' }}
+                </button>
+                
+                <!-- Expand/Collapse for large data -->
+                <button
+                  v-if="(visibleData[key] || resourceKind === 'ConfigMap') && isLargeData(getDisplayValue(value))"
+                  @click="toggleDataExpansion(key)"
+                  class="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {{ expandedData.has(key) ? 'Collapse' : 'Expand' }}
+                </button>
+              </div>
+              
+              <!-- Right side: Value and copy button -->
+              <div class="flex items-start gap-2 flex-1 min-w-0">
+                <div class="text-xs text-gray-300 font-mono break-all flex-1 min-w-0">
+                  <!-- For Secrets: Show based on visibility -->
+                  <div v-if="resourceKind === 'Secret'">
+                    <span v-if="!visibleData[key]" class="italic text-gray-500">
+                      ••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
                     </span>
-                    <button
-                      v-if="resourceKind === 'Secret'"
-                      @click="toggleDataVisibility(key)"
-                      :class="[
-                        'text-xs px-2 py-0.5 rounded transition-colors',
-                        visibleData[key] 
-                          ? 'status-badge-error hover:opacity-80' 
-                          : 'status-badge-warning hover:opacity-80'
-                      ]"
-                    >
-                      {{ visibleData[key] ? 'Hide' : 'Show' }}
-                    </button>
-                    <button
-                      v-if="(visibleData[key] || resourceKind === 'ConfigMap') && isLargeData(getDisplayValue(value))"
-                      @click="toggleDataExpansion(key)"
-                      class="text-xs text-text-secondary hover:text-text-primary transition-colors"
-                    >
-                      {{ expandedData.has(key) ? 'Collapse' : 'Expand' }}
-                    </button>
-                  </div>
-                  <div class="text-xs text-text-primary font-mono">
-                    <!-- For Secrets: Show based on visibility -->
-                    <div v-if="resourceKind === 'Secret'">
-                      <span v-if="!visibleData[key]" class="italic text-text-secondary">••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</span>
-                      <div v-else>
-                        <div v-if="!isLargeData(getDisplayValue(value))" class="break-all">
-                          {{ getDisplayValue(value) }}
-                        </div>
-                        <div v-else>
-                          <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-surface-tertiary p-2 rounded border max-h-60 overflow-y-auto">
-                            {{ formatDataValue(getDisplayValue(value)) }}
-                          </div>
-                          <div v-else class="text-text-secondary">
-                            {{ getTruncatedDataValue(getDisplayValue(value)) }}
-                            <button
-                              @click="toggleDataExpansion(key)"
-                              class="ml-1 text-accent-primary hover:underline"
-                            >
-                              Show more
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- For ConfigMaps: Always show, with expand/collapse -->
                     <div v-else>
-                      <div v-if="!isLargeData(getDisplayValue(value))" class="break-all">
+                      <div v-if="!isLargeData(getDisplayValue(value))">
                         {{ getDisplayValue(value) }}
                       </div>
                       <div v-else>
-                        <div v-if="expandedData.has(key)" class="break-all whitespace-pre-wrap bg-surface-tertiary p-2 rounded border max-h-60 overflow-y-auto">
+                        <div v-if="expandedData.has(key)" class="whitespace-pre-wrap bg-gray-800 p-2 rounded border border-gray-600 max-h-40 overflow-y-auto">
                           {{ formatDataValue(getDisplayValue(value)) }}
                         </div>
-                        <div v-else class="text-text-secondary">
+                        <div v-else class="text-gray-400">
                           {{ getTruncatedDataValue(getDisplayValue(value)) }}
                           <button
                             @click="toggleDataExpansion(key)"
-                            class="ml-1 text-accent-primary hover:underline"
+                            class="ml-1 text-blue-400 hover:underline"
                           >
                             Show more
                           </button>
@@ -137,18 +122,39 @@
                       </div>
                     </div>
                   </div>
+                  
+                  <!-- For ConfigMaps: Always show, with expand/collapse -->
+                  <div v-else>
+                    <div v-if="!isLargeData(getDisplayValue(value))">
+                      {{ getDisplayValue(value) }}
+                    </div>
+                    <div v-else>
+                      <div v-if="expandedData.has(key)" class="whitespace-pre-wrap bg-gray-800 p-2 rounded border border-gray-600 max-h-40 overflow-y-auto">
+                        {{ formatDataValue(getDisplayValue(value)) }}
+                      </div>
+                      <div v-else class="text-gray-400">
+                        {{ getTruncatedDataValue(getDisplayValue(value)) }}
+                        <button
+                          @click="toggleDataExpansion(key)"
+                          class="ml-1 text-blue-400 hover:underline"
+                        >
+                          Show more
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    @click="copyToClipboard(getDisplayValue(value), key)"
-                    class="p-1 text-gray-400 hover:text-text-secondary transition-colors"
-                    :title="`Copy ${key}`"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                    </svg>
-                  </button>
-                </div>
+                
+                <!-- Copy button -->
+                <button
+                  @click="copyToClipboard(getDisplayValue(value), key)"
+                  class="p-1 text-gray-400 hover:text-gray-300 transition-colors flex-shrink-0"
+                  :title="`Copy ${key}`"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
