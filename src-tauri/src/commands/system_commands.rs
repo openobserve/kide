@@ -210,6 +210,7 @@ pub async fn get_pods_by_selector(
 ) -> Result<Vec<serde_json::Value>, String> {
     use k8s_openapi::api::core::v1::Pod;
     use kube::api::{Api, ListParams};
+    use crate::k8s::watch::convert_to_list_item;
     
     let client = state.k8s_client.get_client().await.map_err(|e| e.to_string())?;
     
@@ -226,11 +227,17 @@ pub async fn get_pods_by_selector(
         .await
         .map_err(|e| format!("Failed to list pods: {}", e))?;
     
+    // Convert pods to K8sListItem format with proper podSpec and podStatus extraction
+    let converted_pods: Result<Vec<_>, _> = pods.items.into_iter()
+        .map(|pod| convert_to_list_item(&pod, "pods"))
+        .collect();
+        
+    let pod_items = converted_pods.map_err(|e| format!("Failed to convert pod data: {}", e))?;
+    
     // Convert to JSON values for easier frontend handling
-    let pod_list: Vec<serde_json::Value> = pods
-        .items
+    let pod_list: Vec<serde_json::Value> = pod_items
         .into_iter()
-        .map(|pod| serde_json::to_value(pod).unwrap_or_default())
+        .map(|item| serde_json::to_value(item).unwrap_or_default())
         .collect();
     
     Ok(pod_list)
@@ -243,6 +250,7 @@ pub async fn get_node_pods(
 ) -> Result<serde_json::Value, String> {
     use k8s_openapi::api::core::v1::Pod;
     use kube::api::{Api, ListParams};
+    use crate::k8s::watch::convert_to_list_item;
     
     let client = state.k8s_client.get_client().await.map_err(|e| e.to_string())?;
     let api: Api<Pod> = Api::all(client);
@@ -255,10 +263,15 @@ pub async fn get_node_pods(
         .await
         .map_err(|e| format!("Failed to list pods for node '{}': {}", node_name, e))?;
     
+    // Convert pods to K8sListItem format with proper podSpec and podStatus extraction
+    let converted_pods: Result<Vec<_>, _> = pods.items.into_iter()
+        .map(|pod| convert_to_list_item(&pod, "pods"))
+        .collect();
+        
+    let pod_items = converted_pods.map_err(|e| format!("Failed to convert pod data: {}", e))?;
+    
     // Return in a format similar to other list endpoints
     Ok(serde_json::json!({
-        "items": pods.items.into_iter()
-            .map(|pod| serde_json::to_value(pod).unwrap_or_default())
-            .collect::<Vec<serde_json::Value>>()
+        "items": pod_items
     }))
 }

@@ -449,7 +449,7 @@ fn resource_type_to_kind_and_api_version(resource_type: &str) -> (&str, &str) {
     }
 }
 
-pub(crate) fn convert_to_list_item<K>(obj: &K, resource_type: &str) -> Result<K8sListItem, anyhow::Error>
+pub fn convert_to_list_item<K>(obj: &K, resource_type: &str) -> Result<K8sListItem, anyhow::Error>
 where
     K: kube::Resource,
     K: serde::Serialize,

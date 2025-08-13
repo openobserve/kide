@@ -325,7 +325,7 @@ const columns = computed((): ColumnDef<any>[] => {
       enableResizing: true
     },
     {
-      accessorKey: 'status.podIP',
+      accessorKey: 'podStatus.podIP',
       id: 'podIP',
       header: 'Pod IP',
       cell: ({ getValue }) => {

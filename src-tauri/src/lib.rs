@@ -3,6 +3,9 @@ pub mod security;
 pub mod commands;
 pub mod state;
 pub mod environment;
+pub mod errors;
+pub mod cleanup;
+pub mod shell_session;
 
 use commands::*;
 use state::*;

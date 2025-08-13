@@ -1,29 +1,30 @@
 use tauri::{AppHandle, State};
-use crate::k8s::{K8sContext, get_resource_categories, K8sResourceCategory, K8sClient};
+use crate::k8s::{K8sContext, get_resource_categories, K8sResourceCategory};
 use crate::state::AppState;
+use crate::commands::command_wrapper::*;
 
 #[tauri::command]
 pub async fn connect_k8s(state: State<'_, AppState>) -> Result<(), String> {
-    state.k8s_client.connect().await.map_err(|e| e.to_string())?;
-    state.initialize_managers().await?;
-    Ok(())
+    let command = ConnectK8sCommand;
+    to_tauri_result(execute_state_command(&state, command).await)
 }
 
 #[tauri::command]
 pub async fn connect_k8s_with_context(state: State<'_, AppState>, context_name: String) -> Result<(), String> {
-    state.k8s_client.connect_with_context(&context_name).await.map_err(|e| e.to_string())?;
-    state.initialize_managers().await?;
-    Ok(())
+    let command = ConnectK8sWithContextCommand { context_name };
+    to_tauri_result(execute_state_command(&state, command).await)
 }
 
 #[tauri::command]
-pub async fn get_k8s_contexts() -> Result<Vec<K8sContext>, String> {
-    K8sClient::get_contexts().await.map_err(|e| e.to_string())
+pub async fn get_k8s_contexts(state: State<'_, AppState>) -> Result<Vec<K8sContext>, String> {
+    let command = GetK8sContextsCommand;
+    to_tauri_result(execute_state_command(&state, command).await)
 }
 
 #[tauri::command]
-pub async fn get_current_k8s_context() -> Result<String, String> {
-    K8sClient::get_current_context().await.map_err(|e| e.to_string())
+pub async fn get_current_k8s_context(state: State<'_, AppState>) -> Result<String, String> {
+    let command = GetCurrentK8sContextCommand;
+    to_tauri_result(execute_state_command(&state, command).await)
 }
 
 #[tauri::command]
@@ -33,23 +34,8 @@ pub async fn get_resources() -> Result<Vec<K8sResourceCategory>, String> {
 
 #[tauri::command]
 pub async fn get_namespaces(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    use k8s_openapi::api::core::v1::Namespace;
-    use kube::api::{Api, ListParams};
-    
-    let client = state.k8s_client.get_client().await.map_err(|e| e.to_string())?;
-    let api: Api<Namespace> = Api::all(client);
-    
-    let namespaces = api.list(&ListParams::default())
-        .await
-        .map_err(|e| e.to_string())?;
-    
-    let namespace_names: Vec<String> = namespaces
-        .items
-        .into_iter()
-        .filter_map(|ns| ns.metadata.name)
-        .collect();
-    
-    Ok(namespace_names)
+    let command = GetNamespacesCommand;
+    to_tauri_result(execute_k8s_command(&state, command).await)
 }
 
 #[tauri::command]

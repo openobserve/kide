@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 /// Centralized configuration for Kide application
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct KideConfig {
     /// Timeout for Kubernetes API connections
     pub connection_timeout: Duration,
@@ -56,6 +56,18 @@ impl KideConfig {
             max_fd_usage: 1000,
             max_shell_command_length: 2048,
             ..Default::default()
+        }
+    }
+    
+    /// Create configuration optimized for testing (minimal timeouts, safe defaults)
+    pub fn testing() -> Self {
+        Self {
+            connection_timeout: Duration::from_secs(5),
+            stream_timeout: Duration::from_secs(10),
+            cleanup_interval: Duration::from_secs(10),
+            max_fd_usage: 100,
+            max_shell_command_length: 512,
+            shell_env_timeout: Duration::from_secs(2),
         }
     }
 }
