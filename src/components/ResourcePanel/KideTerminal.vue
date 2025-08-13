@@ -209,7 +209,6 @@ class KideTerminal {
     try {
       if (this.terminal) {
         this.terminal.clear()
-        this.terminal.writeln('\r\n🔗 Connecting to shell...\r\n')
       }
       
       const cols = this.terminal?.cols || 80
@@ -231,7 +230,6 @@ class KideTerminal {
       await this.setupShellEventListener()
       
       if (this.terminal) {
-        this.terminal.writeln('✅ Connected to shell\r\n')
         this.terminal.focus()
         
         // Ensure terminal is properly fitted after connection

@@ -46,7 +46,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search logs..."
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-40 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-64 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
