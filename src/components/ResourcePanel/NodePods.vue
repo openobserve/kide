@@ -440,11 +440,36 @@ async function handleViewPod(pod: any): Promise<void> {
       namespace: pod.metadata?.namespace
     })
     
-    emit('viewPod', completePodData)
+    console.log('Complete pod data received:', completePodData)
+    console.log('Pod spec volumes:', completePodData.spec?.volumes)
+    console.log('Pod spec tolerations:', completePodData.spec?.tolerations)  
+    console.log('Pod status conditions:', completePodData.status?.conditions)
+    
+    // Map the data structure to match what ResourcePanel expects
+    const normalizedPod = {
+      ...completePodData,
+      kind: 'Pod',
+      podStatus: completePodData.status,
+      podSpec: completePodData.spec,
+      // Also ensure direct access to status and spec for YAML tab
+      status: completePodData.status,
+      spec: completePodData.spec
+    }
+    
+    emit('viewPod', normalizedPod)
   } catch (error) {
     console.error('Error fetching complete pod data:', error)
-    // Fallback to using the pod data we have
-    emit('viewPod', pod)
+    // Fallback to using the pod data we have with proper mapping
+    const normalizedPod = {
+      ...pod,
+      kind: 'Pod',
+      podStatus: pod.status || pod.podStatus,
+      podSpec: pod.spec || pod.podSpec,
+      // Ensure direct access to status and spec
+      status: pod.status || pod.podStatus,
+      spec: pod.spec || pod.podSpec
+    }
+    emit('viewPod', normalizedPod)
   }
 }
 
