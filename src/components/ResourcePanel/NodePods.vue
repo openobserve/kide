@@ -431,8 +431,21 @@ async function fetchNodePods(): Promise<void> {
   }
 }
 
-function handleViewPod(pod: any): void {
-  emit('viewPod', pod)
+async function handleViewPod(pod: any): Promise<void> {
+  // Fetch complete pod data before viewing
+  try {
+    const completePodData = await invoke<any>('get_resource', {
+      resourceKind: 'Pod',
+      resourceName: pod.metadata?.name,
+      namespace: pod.metadata?.namespace
+    })
+    
+    emit('viewPod', completePodData)
+  } catch (error) {
+    console.error('Error fetching complete pod data:', error)
+    // Fallback to using the pod data we have
+    emit('viewPod', pod)
+  }
 }
 
 
