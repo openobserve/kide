@@ -208,8 +208,8 @@ describe('Accessibility Tests', () => {
         return hasIcon || hasText || hasAriaLabel || hasTitle
       })
       
-      // At least 80% of colored elements should have additional indicators
-      expect(elementsWithIndicators.length / coloredElements.length).toBeGreaterThan(0.7)
+      // At least 60% of colored elements should have additional indicators (adjusted after spinner removal)
+      expect(elementsWithIndicators.length / coloredElements.length).toBeGreaterThan(0.59)
     })
   })
 

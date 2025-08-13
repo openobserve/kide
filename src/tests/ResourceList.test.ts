@@ -61,17 +61,20 @@ describe('ResourceList Component', () => {
   })
 
   describe('Loading States', () => {
-    it('should display loading spinner when loading and no items', () => {
+    it('should show blank state when loading and no initial data (spinner removed)', () => {
       wrapper = mount(ResourceList, {
         props: {
           resource: mockResource,
           items: [],
-          loading: true
+          loading: false, // Set to false to simulate our new loading behavior
+          hasInitialData: false // No initial data received yet
         }
       })
 
-      expect(wrapper.find('.animate-spin').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Loading nodes...')
+      expect(wrapper.find('.animate-spin').exists()).toBe(false)
+      // Should show blank state until data arrives - no spinner, no empty message
+      expect(wrapper.text()).not.toContain('Loading nodes...')
+      expect(wrapper.text()).not.toContain('No Nodes found')
     })
 
     it('should not display loading spinner when not loading', () => {
@@ -93,7 +96,8 @@ describe('ResourceList Component', () => {
         props: {
           resource: mockResource,
           items: [],
-          loading: false
+          loading: false,
+          hasInitialData: true // Required to show empty state
         }
       })
 
@@ -411,7 +415,8 @@ describe('ResourceList Component', () => {
         props: {
           resource: mockResource,
           items: [],
-          loading: false
+          loading: false,
+          hasInitialData: true // Required to show empty state
         }
       })
 
@@ -430,7 +435,8 @@ describe('ResourceList Component', () => {
         props: {
           resource: mockResource,
           items: [],
-          loading: false
+          loading: false,
+          hasInitialData: true // Required to show empty state
         }
       })
 

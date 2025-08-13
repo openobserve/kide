@@ -14,6 +14,7 @@ export const useResourceStore = defineStore('resources', (): {
   isChangingNamespaces: import('vue').Ref<boolean>
   error: import('vue').Ref<string | null>
   watchError: import('vue').Ref<string | null>
+  hasInitialData: import('vue').Ref<boolean>
   loadResourceCategories: () => Promise<void>
   selectResource: (resource: K8sResource, namespaces: string[]) => Promise<void>
   changeNamespaces: (newNamespaces: string[]) => Promise<void>
@@ -33,6 +34,7 @@ export const useResourceStore = defineStore('resources', (): {
   const isChangingNamespaces = ref(false)
   const error = ref<string | null>(null)
   const watchError = ref<string | null>(null)
+  const hasInitialData = ref(false) // Track if we've received initial data (even if empty)
 
   // Event batching for performance
   let eventBatch: WatchEvent[] = []
@@ -52,42 +54,64 @@ export const useResourceStore = defineStore('resources', (): {
   }
 
   async function selectResource(resource: K8sResource, namespaces: string[]): Promise<void> {
-    // Clear previous errors
+    // Clear previous errors and initial data flag
     error.value = null
     watchError.value = null
+    hasInitialData.value = false
     
+    // Unsubscribe from previous resource if any
     if (selectedResource.value) {
       try {
-        await invoke('stop_resource_watch', {
+        await invoke('unsubscribe_from_resources', {
           resourceType: selectedResource.value.name.toLowerCase(),
-          namespaces: selectedResource.value.namespaced ? namespaces : null
+          namespace: selectedResource.value.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null
         })
       } catch (stopError) {
-        console.warn('Failed to stop previous watch:', stopError)
-        // Don't throw here as this shouldn't prevent new watch
+        console.warn('Failed to unsubscribe from previous resource:', stopError)
+        // Don't throw here as this shouldn't prevent new subscription
       }
     }
 
     selectedResource.value = resource
-    resourceItems.value = []
     loading.value = true
 
     try {
-      await invoke('start_resource_watch', {
+      // Subscribe to new resource and get immediate cached data
+      const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
         resourceType: resource.name.toLowerCase(),
-        namespaces: resource.namespaced ? namespaces : null
+        namespace: resource.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null
       })
+      
+      // Set the cached data immediately (no more delay!)
+      resourceItems.value = cachedData || []
+      
+      // Only set hasInitialData if we actually got cached data
+      if (cachedData && cachedData.length > 0) {
+        hasInitialData.value = true
+      } else {
+        // For empty or new subscriptions, wait for watch events or timeout
+        createTimeout(() => {
+          hasInitialData.value = true
+          loading.value = false // Stop loading after timeout
+        }, 2000) // 2 second timeout to allow initial watch events
+      }
       
       // Clear any previous watch errors on successful start
       watchError.value = null
     } catch (watchErr: any) {
-      console.error('Failed to start watch:', watchErr)
+      console.error('Failed to subscribe to resource:', watchErr)
       const errorMessage = `Failed to watch ${resource.name}: ${watchErr?.toString() || 'Unknown error'}`
       watchError.value = errorMessage
       error.value = errorMessage
+      resourceItems.value = []
+      hasInitialData.value = true // Error responses count as "initial data received"
       throw new Error(errorMessage)
     } finally {
-      loading.value = false
+      // Only set loading = false if we have initial data
+      // Otherwise, let the timeout handle it
+      if (hasInitialData.value) {
+        loading.value = false
+      }
     }
   }
 
@@ -98,7 +122,7 @@ export const useResourceStore = defineStore('resources', (): {
       namespaceChangeTimeout = null
     }
     
-    // Clear previous errors
+    // Clear previous errors but keep initial data flag (we're just switching namespaces)
     watchError.value = null
     
     // Don't restart watch if no resource is selected or resource is not namespaced
@@ -106,58 +130,41 @@ export const useResourceStore = defineStore('resources', (): {
       return
     }
     
-    // Immediately filter out items that are not in the new namespaces
-    if (resourceItems.value.length > 0) {
-      resourceItems.value = resourceItems.value.filter(item => {
-        const itemNamespace = item.metadata?.namespace
-        return itemNamespace ? newNamespaces.includes(itemNamespace) : false
-      })
-    }
-    
     // Set loading state immediately
     isChangingNamespaces.value = true
     loading.value = true
     
-    // Debounce the actual watch restart to prevent rapid successive calls
-    namespaceChangeTimeout = createTimeout(async () => {
-      try {
-        // Clear existing items to show immediate feedback
-        resourceItems.value = []
-        
-        // Stop current watch
-        if (selectedResource.value) {
-          try {
-            await invoke('stop_resource_watch', {
-              resourceType: selectedResource.value.name.toLowerCase(),
-              namespaces: selectedResource.value.namespaced ? newNamespaces : null
-            })
-          } catch (stopError) {
-            console.warn('Failed to stop watch during namespace change:', stopError)
-            // Continue with restart attempt
-          }
-        }
-        
-        // Small delay to allow backend cleanup
-        await new Promise(resolve => setTimeout(resolve, TIMEOUTS.RESOURCE_CLEANUP_DELAY))
-        
-        // Start new watch with updated namespaces
-        if (selectedResource.value && selectedResource.value.namespaced) {
-          await invoke('start_resource_watch', {
-            resourceType: selectedResource.value.name.toLowerCase(),
-            namespaces: newNamespaces
-          })
-        }
-      } catch (namespaceError: any) {
-        console.error('Failed to restart watch for namespace change:', namespaceError)
-        const errorMessage = `Failed to switch namespaces for ${selectedResource.value?.name}: ${namespaceError?.toString() || 'Unknown error'}`
-        watchError.value = errorMessage
-        error.value = errorMessage
-      } finally {
-        isChangingNamespaces.value = false
-        loading.value = false
-        namespaceChangeTimeout = null
-      }
-    }, TIMEOUTS.NAMESPACE_CHANGE_DEBOUNCE)
+    try {
+      // Subscribe to the same resource with new namespace - this will get immediate cached data!
+      const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
+        resourceType: selectedResource.value.name.toLowerCase(),
+        namespace: newNamespaces.length === 1 ? newNamespaces[0] : null
+      })
+      
+      // Set the cached data immediately (no delay!)
+      resourceItems.value = cachedData || []
+      
+      // Always reset hasInitialData when changing namespaces - wait for watch events or timeout
+      hasInitialData.value = false
+      createTimeout(() => {
+        hasInitialData.value = true
+        loading.value = false // Stop loading after timeout
+        isChangingNamespaces.value = false // Stop namespace changing state
+      }, 2000) // 2 second timeout to allow initial watch events
+      
+      // Clear any previous watch errors on successful subscription
+      watchError.value = null
+    } catch (namespaceError: any) {
+      console.error('Failed to switch namespaces:', namespaceError)
+      const errorMessage = `Failed to switch namespaces for ${selectedResource.value?.name}: ${namespaceError?.toString() || 'Unknown error'}`
+      watchError.value = errorMessage
+      error.value = errorMessage
+      resourceItems.value = []
+      hasInitialData.value = true // Error responses count as "data received"
+    } finally {
+      // Don't set loading states to false here - let the timeout or InitialSyncComplete event handle it
+      // This ensures we don't show "No X found" before we receive initial data
+    }
   }
 
   function processWatchEvent(event: WatchEvent): void {
@@ -166,10 +173,23 @@ export const useResourceStore = defineStore('resources', (): {
       return
     }
     
-    // Skip events during namespace changes to prevent conflicts
+    // Handle InitialSyncComplete specially - always process this even during namespace changes
+    if (event === 'initialSyncComplete' || (typeof event === 'string' && event === 'initialSyncComplete')) {
+      hasInitialData.value = true
+      loading.value = false
+      isChangingNamespaces.value = false
+      return
+    }
+    
+    // Skip other events during namespace changes to prevent conflicts
     if (isChangingNamespaces.value) {
       return
     }
+    
+    // Mark that we've received initial data from watch events
+    hasInitialData.value = true
+    loading.value = false
+    isChangingNamespaces.value = false
     
     // Add event to batch
     eventBatch.push(event)
@@ -266,23 +286,14 @@ export const useResourceStore = defineStore('resources', (): {
     }
     
     try {
-      // Stop current watch
-      await invoke('stop_resource_watch', {
+      // Re-subscribe to get fresh data - the shared cache will handle this efficiently
+      const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
         resourceType: selectedResource.value.name.toLowerCase(),
-        namespaces: selectedResource.value.namespaced ? namespaces : null
+        namespace: selectedResource.value.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null
       })
       
-      // Clear current items
-      resourceItems.value = []
-      
-      // Small delay to allow backend cleanup
-      await new Promise(resolve => setTimeout(resolve, TIMEOUTS.RESOURCE_CLEANUP_DELAY))
-      
-      // Restart watch to get updated resource list
-      await invoke('start_resource_watch', {
-        resourceType: selectedResource.value.name.toLowerCase(),
-        namespaces: selectedResource.value.namespaced ? namespaces : null
-      })
+      // Update resource items with fresh data
+      resourceItems.value = cachedData || []
     } catch (error) {
       console.error('Failed to refresh resource list after deletion:', error)
       throw error
@@ -290,15 +301,15 @@ export const useResourceStore = defineStore('resources', (): {
   }
 
   async function resetForClusterChange(): Promise<void> {
-    // Stop any current watch
+    // Unsubscribe from any current resource
     if (selectedResource.value) {
       try {
-        await invoke('stop_resource_watch', {
+        await invoke('unsubscribe_from_resources', {
           resourceType: selectedResource.value.name.toLowerCase(),  
-          namespaces: selectedResource.value.namespaced ? ['default'] : null
+          namespace: selectedResource.value.namespaced ? 'default' : null
         })
       } catch (error) {
-        console.warn('Failed to stop watch during cluster change:', error)
+        console.warn('Failed to unsubscribe during cluster change:', error)
       }
     }
     
@@ -309,6 +320,7 @@ export const useResourceStore = defineStore('resources', (): {
     isChangingNamespaces.value = false
     error.value = null
     watchError.value = null
+    hasInitialData.value = false
     
     // Clear any pending timeouts safely
     if (namespaceChangeTimeout) {
@@ -342,6 +354,7 @@ export const useResourceStore = defineStore('resources', (): {
     isChangingNamespaces,
     error,
     watchError,
+    hasInitialData,
     
     // Actions
     loadResourceCategories,

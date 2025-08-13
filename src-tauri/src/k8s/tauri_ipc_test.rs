@@ -162,6 +162,9 @@ mod tests {
                     Ok(WatchEvent::Modified(_)) | Ok(WatchEvent::Deleted(_)) => {
                         panic!("Expected WatchEvent::Added, got different event type");
                     },
+                    Ok(WatchEvent::InitialSyncComplete) => {
+                        panic!("Expected WatchEvent::Added, got InitialSyncComplete");
+                    },
                     Err(e) => panic!("WatchEvent deserialization failed: {}", e),
                 }
             },

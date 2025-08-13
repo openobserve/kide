@@ -6,6 +6,7 @@ pub mod watch;
 pub mod resource_map;
 pub mod system_monitor;
 pub mod resource_api;
+pub mod shared_cache;
 
 #[cfg(test)]
 mod tests;
@@ -24,3 +25,4 @@ pub use watch::*;
 pub use resource_map::*;
 pub use system_monitor::*;
 pub use resource_api::*;
+pub use shared_cache::*;

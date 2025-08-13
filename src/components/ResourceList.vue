@@ -89,16 +89,8 @@
         @retry="handleRetry"
       />
       
-      <!-- Loading State -->
-      <div v-else-if="loading && items.length === 0" class="flex items-center justify-center h-full">
-        <div class="text-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p class="text-text-secondary">Loading {{ resource?.name.toLowerCase() || 'resources' }}...</p>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="items.length === 0" class="flex items-center justify-center h-full">
+      <!-- Empty State (only show when we have received initial data and have zero results) -->
+      <div v-else-if="hasInitialData && items.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center">
           <div class="text-text-muted mb-4">
             <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +166,7 @@
             </div>
           </div>
           
-          <div v-else-if="items.length === 0" class="flex items-center justify-center py-12">
+          <div v-else-if="hasInitialData && items.length === 0" class="flex items-center justify-center py-12">
             <div class="text-center">
               <div class="text-gray-400 mb-4">
                 <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,6 +263,7 @@ interface Props {
   selectedNamespaces?: string[]
   error?: string | null
   watchError?: string | null
+  hasInitialData?: boolean
 }
 
 const props = defineProps<Props>()

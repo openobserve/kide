@@ -20,6 +20,7 @@
         :selectedNamespaces="selectedNamespaces"
         :error="error"
         :watchError="watchError"
+        :hasInitialData="hasInitialData"
         @namespace-change="$emit('namespace-change', $event)"
         @resource-deleted="$emit('resource-deleted')"
         @retry="$emit('retry')"
@@ -70,6 +71,7 @@ interface Props {
   connectionError?: string | null
   error?: string | null
   watchError?: string | null
+  hasInitialData: boolean
 }
 
 interface Emits {

@@ -40,6 +40,7 @@
         :connectionError="clusterStore.connectionError"
         :error="resourceStore.error"
         :watchError="resourceStore.watchError"
+        :hasInitialData="resourceStore.hasInitialData"
         @namespace-change="handleNamespaceChange"
         @resource-deleted="handleResourceDeleted"
         @retry="handleRetry"

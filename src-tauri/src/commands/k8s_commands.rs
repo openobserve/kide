@@ -229,3 +229,83 @@ pub async fn get_resource_events(
     
     Ok(event_list)
 }
+
+// ===== SHARED CACHE COMMANDS =====
+
+#[tauri::command]
+pub async fn subscribe_to_resources(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+    resource_type: String,
+    namespace: Option<String>,
+) -> Result<Vec<crate::k8s::K8sListItem>, String> {
+    use crate::k8s::{WatchScope, K8sClient};
+    
+    let cache_lock = state.shared_cache.lock().await;
+    if let Some(cache) = cache_lock.as_ref() {
+        // Get current cluster context
+        let cluster_context = K8sClient::get_current_context()
+            .await
+            .unwrap_or_else(|_| "default".to_string());
+        
+        let scope = WatchScope::new(cluster_context)
+            .with_namespace(namespace);
+        
+        cache.subscribe(app_handle, resource_type, scope)
+            .await
+            .map_err(|e| e.to_string())
+    } else {
+        Err("Shared cache not initialized".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn unsubscribe_from_resources(
+    state: State<'_, AppState>,
+    resource_type: String,
+    namespace: Option<String>,
+) -> Result<(), String> {
+    use crate::k8s::{WatchScope, K8sClient};
+    
+    let cache_lock = state.shared_cache.lock().await;
+    if let Some(cache) = cache_lock.as_ref() {
+        // Get current cluster context
+        let cluster_context = K8sClient::get_current_context()
+            .await
+            .unwrap_or_else(|_| "default".to_string());
+        
+        let scope = WatchScope::new(cluster_context)
+            .with_namespace(namespace);
+        
+        cache.unsubscribe(resource_type, scope).await;
+        Ok(())
+    } else {
+        Err("Shared cache not initialized".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn get_cached_resources(
+    state: State<'_, AppState>,
+    resource_type: String,
+    namespace: Option<String>,
+) -> Result<Vec<crate::k8s::K8sListItem>, String> {
+    use crate::k8s::{WatchScope, K8sClient};
+    
+    let cache_lock = state.shared_cache.lock().await;
+    if let Some(cache) = cache_lock.as_ref() {
+        // Get current cluster context
+        let cluster_context = K8sClient::get_current_context()
+            .await
+            .unwrap_or_else(|_| "default".to_string());
+        
+        let scope = WatchScope::new(cluster_context)
+            .with_namespace(namespace);
+        
+        Ok(cache.get_cached_data(resource_type, scope)
+            .await
+            .unwrap_or_default())
+    } else {
+        Err("Shared cache not initialized".to_string())
+    }
+}

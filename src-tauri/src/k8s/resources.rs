@@ -197,6 +197,8 @@ pub enum WatchEvent {
     Modified(K8sListItem),
     /// A resource was deleted
     Deleted(K8sListItem),
+    /// Initial watch synchronization is complete (no more items)
+    InitialSyncComplete,
 }
 
 /// Returns all supported Kubernetes resource types organized by category.
