@@ -153,6 +153,7 @@ interface Emits {
   'openPodShell': [pod: K8sListItem]
   'deleteResource': [item: K8sListItem]
   'selectNamespace': [namespace: string]
+  'toggleCronJobSuspend': [item: K8sListItem, suspend: boolean]
 }
 
 const props = defineProps<Props>()
@@ -1776,6 +1777,42 @@ function createHoverButtons(item: K8sListItem) {
             'stroke-linejoin': 'round',
             'stroke-width': '2',
             d: 'M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+          })
+        ])
+      ])
+    )
+  }
+
+  // CronJob-specific buttons
+  if (props.resource?.kind === 'CronJob') {
+    const isSuspended = getGenericSpec(item)?.suspend || false
+    buttons.push(
+      h('button', {
+        onClick: (e: Event) => {
+          e.stopPropagation()
+          emit('toggleCronJobSuspend', item, !isSuspended)
+        },
+        class: isSuspended ? 'btn-icon-success w-6 h-6' : 'btn-icon-secondary w-6 h-6',
+        title: isSuspended ? 'Resume CronJob' : 'Suspend CronJob'
+      }, [
+        // Play icon for Resume (when suspended)
+        isSuspended ? h('svg', {
+          class: 'w-3 h-3',
+          fill: 'currentColor',
+          viewBox: '0 0 24 24'
+        }, [
+          h('path', {
+            d: 'M8 5v14l11-7z'
+          })
+        ]) : 
+        // Pause icon for Suspend (when not suspended)
+        h('svg', {
+          class: 'w-3 h-3',
+          fill: 'currentColor',
+          viewBox: '0 0 24 24'
+        }, [
+          h('path', {
+            d: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'
           })
         ])
       ])

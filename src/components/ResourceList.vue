@@ -151,6 +151,7 @@
           @openPodShell="$emit('openPodShell', $event)"
           @deleteResource="handleDeleteResource"
           @selectNamespace="handleNamespaceSelect"
+          @toggleCronJobSuspend="handleToggleCronJobSuspend"
         />
           
           <!-- Empty state -->
@@ -495,6 +496,25 @@ async function deleteResourceInternal(item: K8sListItem, shouldEmitDeleted = tru
 
 function handleRetry(): void {
   emit('retry')
+}
+
+// Handle CronJob suspend/resume
+async function handleToggleCronJobSuspend(item: K8sListItem, suspend: boolean): Promise<void> {
+  if (!props.resource || props.resource.kind !== 'CronJob') return
+  
+  try {
+    await invoke('toggle_cronjob_suspend', {
+      name: item.metadata?.name,
+      namespace: item.metadata?.namespace,
+      suspend: suspend
+    })
+    
+    // Emit event to refresh the data
+    emit('resource-deleted') // Reusing this event to trigger a refresh
+  } catch (error) {
+    console.error('❌ Failed to toggle CronJob suspend state:', error)
+    // TODO: Show user-friendly error notification
+  }
 }
 
 

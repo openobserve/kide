@@ -51,7 +51,8 @@ pub fn run() {
             get_pods_by_selector,
             get_node_pods,
             get_full_resource,
-            open_url
+            open_url,
+            toggle_cronjob_suspend
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

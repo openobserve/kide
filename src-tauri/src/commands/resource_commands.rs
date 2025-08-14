@@ -251,6 +251,71 @@ pub async fn delete_resource_v2(
     to_tauri_result(execute_k8s_command(&state, command).await)
 }
 
+/// Command to toggle CronJob suspend state.
+pub struct ToggleCronJobSuspendCommand {
+    pub name: String,
+    pub namespace: Option<String>,
+    pub suspend: bool,
+}
+
+#[async_trait::async_trait]
+impl K8sCommand<()> for ToggleCronJobSuspendCommand {
+    async fn validate(&self) -> K8sResult<()> {
+        if self.namespace.is_none() {
+            return Err(K8sError::ValidationFailed {
+                message: "Namespace required for CronJob".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    async fn execute(&self, client: &kube::Client) -> K8sResult<()> {
+        use kube::api::{Api, Patch, PatchParams};
+        use k8s_openapi::api::batch::v1::CronJob;
+        use serde_json::json;
+        
+        let api: Api<CronJob> = if let Some(namespace) = &self.namespace {
+            Api::namespaced(client.clone(), namespace)
+        } else {
+            return Err(K8sError::ValidationFailed {
+                message: "Namespace is required for CronJob operations".to_string(),
+            });
+        };
+
+        let patch = json!({
+            "spec": {
+                "suspend": self.suspend
+            }
+        });
+
+        let patch_params = PatchParams::default();
+        let patch_data = Patch::Merge(&patch);
+
+        api.patch(&self.name, &patch_params, &patch_data)
+            .await
+            .map_err(|e| K8sError::ApiError {
+                message: format!("Failed to update CronJob suspend state: {}", e),
+            })?;
+
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub async fn toggle_cronjob_suspend(
+    state: State<'_, AppState>,
+    name: String,
+    namespace: Option<String>,
+    suspend: bool,
+) -> Result<(), String> {
+    let command = ToggleCronJobSuspendCommand {
+        name,
+        namespace,
+        suspend,
+    };
+    to_tauri_result(execute_k8s_command(&state, command).await)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
