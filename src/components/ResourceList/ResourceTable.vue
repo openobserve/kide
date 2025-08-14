@@ -154,6 +154,7 @@ interface Emits {
   'deleteResource': [item: K8sListItem]
   'selectNamespace': [namespace: string]
   'toggleCronJobSuspend': [item: K8sListItem, suspend: boolean]
+  'triggerCronJob': [item: K8sListItem]
 }
 
 const props = defineProps<Props>()
@@ -1786,6 +1787,8 @@ function createHoverButtons(item: K8sListItem) {
   // CronJob-specific buttons
   if (props.resource?.kind === 'CronJob') {
     const isSuspended = getGenericSpec(item)?.suspend || false
+    
+    // Suspend/Resume button
     buttons.push(
       h('button', {
         onClick: (e: Event) => {
@@ -1813,6 +1816,33 @@ function createHoverButtons(item: K8sListItem) {
         }, [
           h('path', {
             d: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'
+          })
+        ])
+      ])
+    )
+    
+    // Trigger button
+    buttons.push(
+      h('button', {
+        onClick: (e: Event) => {
+          e.stopPropagation()
+          emit('triggerCronJob', item)
+        },
+        class: 'btn-icon-primary w-6 h-6',
+        title: 'Trigger CronJob Now'
+      }, [
+        // Lightning bolt icon for trigger
+        h('svg', {
+          class: 'w-3 h-3',
+          fill: 'none',
+          stroke: 'currentColor',
+          viewBox: '0 0 24 24'
+        }, [
+          h('path', {
+            'stroke-linecap': 'round',
+            'stroke-linejoin': 'round',
+            'stroke-width': '2',
+            d: 'M13 10V3L4 14h7v7l9-11h-7z'
           })
         ])
       ])

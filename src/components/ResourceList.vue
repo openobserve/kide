@@ -152,6 +152,7 @@
           @deleteResource="handleDeleteResource"
           @selectNamespace="handleNamespaceSelect"
           @toggleCronJobSuspend="handleToggleCronJobSuspend"
+          @triggerCronJob="handleTriggerCronJob"
         />
           
           <!-- Empty state -->
@@ -513,6 +514,24 @@ async function handleToggleCronJobSuspend(item: K8sListItem, suspend: boolean): 
     emit('resource-deleted') // Reusing this event to trigger a refresh
   } catch (error) {
     console.error('❌ Failed to toggle CronJob suspend state:', error)
+    // TODO: Show user-friendly error notification
+  }
+}
+
+// Handle CronJob trigger
+async function handleTriggerCronJob(item: K8sListItem): Promise<void> {
+  if (!props.resource || props.resource.kind !== 'CronJob') return
+  
+  try {
+    await invoke('trigger_cronjob', {
+      name: item.metadata?.name,
+      namespace: item.metadata?.namespace
+    })
+    
+    // Emit event to refresh the data to show new job
+    emit('resource-deleted') // Reusing this event to trigger a refresh
+  } catch (error) {
+    console.error('❌ Failed to trigger CronJob:', error)
     // TODO: Show user-friendly error notification
   }
 }

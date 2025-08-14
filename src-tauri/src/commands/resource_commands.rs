@@ -316,6 +316,113 @@ pub async fn toggle_cronjob_suspend(
     to_tauri_result(execute_k8s_command(&state, command).await)
 }
 
+/// Command to trigger a CronJob manually by creating a Job from it.
+pub struct TriggerCronJobCommand {
+    pub name: String,
+    pub namespace: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl K8sCommand<()> for TriggerCronJobCommand {
+    async fn validate(&self) -> K8sResult<()> {
+        if self.namespace.is_none() {
+            return Err(K8sError::ValidationFailed {
+                message: "Namespace required for CronJob".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    async fn execute(&self, client: &kube::Client) -> K8sResult<()> {
+        use kube::api::Api;
+        use k8s_openapi::api::batch::v1::{CronJob, Job};
+        use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
+        
+        let namespace = self.namespace.as_ref().unwrap();
+        let cronjob_api: Api<CronJob> = Api::namespaced(client.clone(), namespace);
+        let job_api: Api<Job> = Api::namespaced(client.clone(), namespace);
+
+        // Get the CronJob to extract its job template
+        let cronjob = cronjob_api.get(&self.name)
+            .await
+            .map_err(|e| K8sError::ApiError {
+                message: format!("Failed to get CronJob {}: {}", self.name, e),
+            })?;
+
+        let Some(cronjob_spec) = cronjob.spec else {
+            return Err(K8sError::ValidationFailed {
+                message: "CronJob has no spec".to_string(),
+            });
+        };
+
+        let job_template = cronjob_spec.job_template;
+
+        // Create a unique name for the triggered job
+        let job_name = format!("{}-manual-{}", self.name, 
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs());
+
+        // Create the Job from the CronJob's template
+        let mut job_spec = job_template.spec.unwrap_or_default();
+        
+        // Ensure the job doesn't restart indefinitely on failure
+        if job_spec.backoff_limit.is_none() {
+            job_spec.backoff_limit = Some(3);
+        }
+
+        let mut job_labels = job_template.metadata
+            .and_then(|m| m.labels)
+            .unwrap_or_default();
+        job_labels.insert("cronjob".to_string(), self.name.clone());
+        job_labels.insert("triggered-by".to_string(), "manual".to_string());
+
+        let job = Job {
+            metadata: ObjectMeta {
+                name: Some(job_name.clone()),
+                namespace: Some(namespace.to_string()),
+                labels: Some(job_labels),
+                owner_references: cronjob.metadata.uid.map(|uid| {
+                    vec![OwnerReference {
+                        api_version: "batch/v1".to_string(),
+                        kind: "CronJob".to_string(),
+                        name: self.name.clone(),
+                        uid,
+                        controller: Some(false),
+                        block_owner_deletion: Some(false),
+                    }]
+                }),
+                ..Default::default()
+            },
+            spec: Some(job_spec),
+            status: None,
+        };
+
+        // Create the Job
+        job_api.create(&Default::default(), &job)
+            .await
+            .map_err(|e| K8sError::ApiError {
+                message: format!("Failed to create Job from CronJob {}: {}", self.name, e),
+            })?;
+
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub async fn trigger_cronjob(
+    state: State<'_, AppState>,
+    name: String,
+    namespace: Option<String>,
+) -> Result<(), String> {
+    let command = TriggerCronJobCommand {
+        name,
+        namespace,
+    };
+    to_tauri_result(execute_k8s_command(&state, command).await)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
