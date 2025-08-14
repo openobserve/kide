@@ -46,9 +46,16 @@
       <!-- Search/Filter input -->
       <div class="p-2 border-b border-border-primary">
         <input
+          ref="searchInput"
           v-model="searchQuery"
           type="text"
           placeholder="Search clusters..."
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-form-type="other"
+          data-lpignore="true"
           class="w-full px-2 py-1 text-xs bg-surface-secondary border border-border-primary rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-text-primary placeholder-text-muted"
         />
       </div>
@@ -137,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { K8sContext, ContextStatus } from '@/types'
 
@@ -162,6 +169,7 @@ const contexts: Ref<K8sContext[]> = ref([])
 const refreshing = ref(false)
 const isDropdownOpen = ref(false)
 const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
 
 // Filtered contexts based on search query
 const filteredContexts = computed(() => {
@@ -213,11 +221,14 @@ function selectContextFromDropdown(context: K8sContext): void {
   closeDropdown()
 }
 
-function toggleDropdown(): void {
+async function toggleDropdown(): Promise<void> {
   isDropdownOpen.value = !isDropdownOpen.value
   if (isDropdownOpen.value) {
     // Clear search when opening
     searchQuery.value = ''
+    // Focus on search input after the DOM updates
+    await nextTick()
+    searchInput.value?.focus()
   }
 }
 
