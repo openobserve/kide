@@ -256,6 +256,13 @@ pub fn get_resource_categories() -> Vec<K8sResourceCategory> {
                     description: "Manages stateful applications with persistent storage".to_string(),
                 },
                 K8sResource {
+                    name: "Jobs".to_string(),
+                    api_version: "batch/v1".to_string(),
+                    kind: "Job".to_string(),
+                    namespaced: true,
+                    description: "Creates one or more Pods and ensures successful completion".to_string(),
+                },
+                K8sResource {
                     name: "CronJobs".to_string(),
                     api_version: "batch/v1".to_string(),
                     kind: "CronJob".to_string(),
@@ -642,7 +649,7 @@ mod tests {
         // Test first category
         let commonly_used = &categories[0];
         assert_eq!(commonly_used.name, "Commonly used");
-        assert_eq!(commonly_used.resources.len(), 13);
+        assert_eq!(commonly_used.resources.len(), 14);
         
         // Test that we have both namespaced and cluster-wide resources
         let has_namespaced = categories.iter()
