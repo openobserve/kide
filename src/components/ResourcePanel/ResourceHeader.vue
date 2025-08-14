@@ -121,16 +121,16 @@ function getStatusDotColor(): string {
   
   if (props.resourceKind === 'Pod') {
     switch (status) {
-      case 'Running': return 'bg-green-500'
-      case 'Pending': return 'bg-yellow-500'
-      case 'Failed': return 'bg-red-500'
-      case 'Succeeded': return 'bg-blue-500'
-      default: return 'bg-gray-500'
+      case 'Running': return 'bg-status-success'
+      case 'Pending': return 'bg-status-warning'
+      case 'Failed': return 'bg-status-error'
+      case 'Succeeded': return 'bg-status-info'
+      default: return 'bg-status-secondary'
     }
   }
   
   if (status.includes('Ready') || status === 'Active' || status === 'Bound') {
-    return 'bg-green-500'
+    return 'bg-status-success'
   }
   
   return 'bg-gray-500'

@@ -52,9 +52,9 @@
               v-if="header.column.getCanResize()"
               @mousedown="header.getResizeHandler()?.($event)"
               @touchstart="header.getResizeHandler()?.($event)"
-              class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500 transition-colors border-r-2 border-transparent hover:border-blue-500 active:bg-blue-600"
+              class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-accent-primary transition-colors border-r-2 border-transparent hover:border-accent-primary active:bg-accent-hover"
               :class="[
-                header.column.getIsResizing() ? 'bg-blue-500 border-blue-500' : 'bg-transparent hover:bg-blue-300 dark:hover:bg-blue-600'
+                header.column.getIsResizing() ? 'bg-accent-primary border-accent-primary' : 'bg-transparent hover:bg-accent-primary/30'
               ]"
             ></div>
           </th>
@@ -1740,7 +1740,7 @@ function createHoverButtons(item: K8sListItem) {
           e.stopPropagation()
           emit('openPodLogs', item)
         },
-        class: 'w-6 h-6 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors duration-200',
+        class: 'btn-icon-primary w-6 h-6',
         title: 'View Pod Logs'
       }, [
         h('svg', {
@@ -1762,7 +1762,7 @@ function createHoverButtons(item: K8sListItem) {
           e.stopPropagation()
           emit('openPodShell', item)
         },
-        class: 'w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-colors duration-200',
+        class: 'btn-icon-success w-6 h-6',
         title: 'Open Shell'
       }, [
         h('svg', {
@@ -1789,7 +1789,7 @@ function createHoverButtons(item: K8sListItem) {
         e.stopPropagation()
         emit('deleteResource', item)
       },
-      class: 'w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors duration-200',
+      class: 'btn-icon-danger w-6 h-6',
       title: `Delete ${props.resource?.kind || 'Resource'}`
     }, [
       h('svg', {

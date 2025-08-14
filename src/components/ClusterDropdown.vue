@@ -15,8 +15,8 @@
         :class="[
           'w-1.5 h-1.5 rounded-full flex-shrink-0',
           selectedContext ? (
-            getContextStatus(selectedContext) === 'connected' ? 'bg-green-500' :
-            getContextStatus(selectedContext) === 'connecting' ? 'bg-yellow-500' :
+            getContextStatus(selectedContext) === 'connected' ? 'bg-status-success' :
+            getContextStatus(selectedContext) === 'connecting' ? 'bg-status-warning' :
             getContextStatus(selectedContext) === 'failed' ? 'bg-red-500' : 'bg-text-muted'
           ) : 'bg-text-muted'
         ]"
@@ -74,8 +74,8 @@
             <div 
               :class="[
                 'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                getContextStatus(context) === 'connected' ? 'bg-green-500' :
-                getContextStatus(context) === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                getContextStatus(context) === 'connected' ? 'bg-status-success' :
+                getContextStatus(context) === 'connecting' ? 'bg-status-warning animate-pulse' :
                 getContextStatus(context) === 'failed' ? 'bg-red-500' : 'bg-text-muted'
               ]"
             />
@@ -258,12 +258,12 @@ function truncateContextName(name: string): string {
 }
 
 .max-h-80::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
+  background: var(--color-border-muted);
   border-radius: 2px;
 }
 
 .max-h-80::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.5);
+  background: var(--color-border-secondary);
 }
 
 /* Firefox scrollbar */

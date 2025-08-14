@@ -60,9 +60,9 @@ class KideTerminal {
     // Create terminal with optimal settings
     this.terminal = new Terminal({
       theme: {
-        background: '#1e1e1e',  // Dark theme
-        foreground: '#cccccc',
-        cursor: '#ffffff',
+        background: 'var(--color-surface-primary)',
+        foreground: 'var(--color-text-primary)',
+        cursor: 'var(--color-accent-primary)',
       },
       fontFamily: '"Cascadia Code", "Fira Code", Monaco, Menlo, "Ubuntu Mono", monospace',
       fontSize: 12,
@@ -452,7 +452,7 @@ defineExpose({
 .kide-terminal {
   height: 100%;
   width: 100%;
-  background-color: #1e1e1e; /* Dark theme */
+  background-color: var(--color-surface-primary);
 }
 
 .terminal-container {
@@ -470,11 +470,11 @@ defineExpose({
 :deep(.xterm-viewport) {
   overflow-y: auto;
   overflow-x: hidden;
-  background-color: #1e1e1e;
+  background-color: var(--color-surface-primary);
 }
 
 :deep(.xterm-screen) {
-  background-color: #1e1e1e;
+  background-color: var(--color-surface-primary);
 }
 
 /* Kide terminal scrollbar styling */

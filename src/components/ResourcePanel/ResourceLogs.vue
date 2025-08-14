@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
           <div class="relative">
-            <select v-model="selectedContainer" class="flat-select text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 pr-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700">
+            <select v-model="selectedContainer" class="form-select flat-select text-sm pr-6">
             <!-- Init Containers -->
             <optgroup v-if="initContainers?.length" label="Init Containers">
               <option v-for="container in initContainers" :key="`init-${container.name}`" :value="`init-${container.name}`">
@@ -26,14 +26,14 @@
             </div>
           </div>
           <button @click="$emit('refresh-logs')" 
-                  class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                  class="btn-primary text-sm px-3 py-1">
             Refresh
           </button>
           <button @click="$emit('toggle-live-logging')" 
                   :class="[
                     'text-sm px-3 py-1 rounded transition-colors',
                     isLiveLogging 
-                      ? 'bg-red-600 text-white hover:bg-red-700' 
+                      ? 'btn-danger' 
                       : 'bg-green-600 text-white hover:bg-green-700'
                   ]">
             {{ isLiveLogging ? 'Stop Live' : 'Start Live' }}
@@ -46,7 +46,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search logs..."
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-64 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                class="form-input text-sm w-64 pr-8"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
@@ -87,7 +87,7 @@
           </div>
         </div>
         <div v-if="isLiveLogging" class="flex items-center text-sm text-green-500">
-          <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+          <div class="status-indicator-success mr-2 animate-pulse"></div>
           Live
         </div>
       </div>

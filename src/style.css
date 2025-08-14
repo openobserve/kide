@@ -505,3 +505,82 @@
 .dark-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
 }
+
+/* Semantic Button Classes */
+.btn-primary {
+  @apply bg-accent-primary text-white hover:bg-accent-hover focus:bg-accent-hover transition-colors duration-150 rounded-md px-4 py-2 font-medium;
+}
+
+.btn-secondary {
+  @apply bg-surface-secondary text-text-primary hover:bg-surface-tertiary border border-border-primary transition-colors duration-150 rounded-md px-4 py-2 font-medium;
+}
+
+.btn-success {
+  @apply bg-status-success text-white hover:opacity-90 transition-colors duration-150 rounded-md px-4 py-2 font-medium;
+}
+
+.btn-danger {
+  @apply bg-status-error text-white hover:opacity-90 transition-colors duration-150 rounded-md px-4 py-2 font-medium;
+}
+
+.btn-warning {
+  @apply bg-status-warning text-white hover:opacity-90 transition-colors duration-150 rounded-md px-4 py-2 font-medium;
+}
+
+.btn-icon {
+  @apply w-8 h-8 rounded-md flex items-center justify-center transition-colors duration-150;
+}
+
+.btn-icon-primary {
+  @apply btn-icon bg-accent-primary text-white hover:bg-accent-hover;
+}
+
+.btn-icon-secondary {
+  @apply btn-icon bg-surface-secondary text-text-primary hover:bg-surface-tertiary border border-border-primary;
+}
+
+.btn-icon-success {
+  @apply btn-icon bg-status-success text-white hover:opacity-90;
+}
+
+.btn-icon-danger {
+  @apply btn-icon bg-status-error text-white hover:opacity-90;
+}
+
+/* Status Indicator Classes */
+.status-indicator {
+  @apply w-2 h-2 rounded-full;
+}
+
+.status-indicator-success {
+  @apply status-indicator bg-status-success;
+}
+
+.status-indicator-warning {
+  @apply status-indicator bg-status-warning;
+}
+
+.status-indicator-error {
+  @apply status-indicator bg-status-error;
+}
+
+.status-indicator-info {
+  @apply status-indicator bg-status-info;
+}
+
+.status-indicator-secondary {
+  @apply status-indicator bg-status-secondary;
+}
+
+/* Form Input Classes */
+.form-input {
+  @apply bg-surface-secondary border border-border-primary text-text-primary placeholder-text-secondary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent transition-colors duration-150;
+}
+
+.form-select {
+  @apply form-input pr-10 appearance-none;
+}
+
+.form-textarea {
+  @apply form-input resize-vertical min-h-[100px];
+}

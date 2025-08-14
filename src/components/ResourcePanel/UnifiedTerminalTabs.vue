@@ -89,23 +89,18 @@
                   </button>
                   
                   <!-- Container dropdown -->
-                  <div v-if="openDropdown === tab.id" style="position: fixed; z-index: 999999; background: white; border: 2px solid #374151; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); min-width: 160px; max-height: 200px; overflow-y: auto;" :style="{ top: dropdownPosition.top, left: dropdownPosition.left }">
+                  <div v-if="openDropdown === tab.id" class="dropdown-menu" :style="{ top: dropdownPosition.top, left: dropdownPosition.left }">
                     <div style="padding: 4px 0;">
                       <div
                         v-for="container in tab.containers"
                         :key="container.name"
                         @click.stop="selectContainer(tab.id, container.name)"
-                        style="padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.15s;"
-                        :style="{
-                          backgroundColor: container.name === tab.containerName ? '#dbeafe' : 'transparent',
-                          color: container.name === tab.containerName ? '#1d4ed8' : '#374151',
-                          fontWeight: container.name === tab.containerName ? 'bold' : 'normal'
-                        }"
                         class="dropdown-item"
+                        :class="{ 'dropdown-item-selected': container.name === tab.containerName }"
                       >
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div class="flex items-center justify-between">
                           <span>{{ container.name }}</span>
-                          <span v-if="container.name === tab.containerName" style="color: #1d4ed8;">✓</span>
+                          <span v-if="container.name === tab.containerName" class="text-accent-primary">✓</span>
                         </div>
                       </div>
                     </div>

@@ -47,7 +47,7 @@
         </button>
         <button
           @click="$emit('confirm')"
-          class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+          class="btn-danger text-sm"
         >
           Delete {{ selectedCount }} Resource{{ selectedCount > 1 ? 's' : '' }}
         </button>

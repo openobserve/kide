@@ -95,7 +95,7 @@
     <!-- Resize Handle -->
     <div 
       ref="resizeHandleRef"
-      class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500 transition-colors border-r-2 border-transparent hover:border-blue-500 active:bg-blue-600 z-10"
+      class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-accent-primary transition-colors border-r-2 border-transparent hover:border-accent-primary active:bg-accent-hover z-10"
       @mousedown="startResize"
     ></div>
   </div>
@@ -349,18 +349,18 @@ function startResize(event: MouseEvent): void {
   width: 8px;
 }
 
-/* Light mode scrollbar */
+/* Theme-aware scrollbar */
 .overflow-y-scroll::-webkit-scrollbar-track {
-  background: #f7f8fc;
+  background: var(--color-background-primary);
 }
 
 .overflow-y-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: var(--color-border-muted);
   border-radius: 4px;
 }
 
 .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: var(--color-text-secondary);
 }
 
 /* Dark mode scrollbar - now handled by .dark-scrollbar class in style.css */

@@ -161,7 +161,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h3 class="text-lg font-medium text-gray-900 mb-2">No matches found</h3>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No matches found</h3>
               <p class="text-gray-600">No resources match "{{ filterText }}". Try a different search term.</p>
             </div>
           </div>
@@ -173,7 +173,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2m0 0V9a2 2 0 012-2h2m0 0V6a2 2 0 012-2h2a2 2 0 012 2v1M6 7h.01M6 11h.01" />
                 </svg>
               </div>
-              <h3 class="text-lg font-medium text-gray-900 mb-2">No {{ resource?.name || 'Resources' }} found</h3>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No {{ resource?.name || 'Resources' }} found</h3>
               <p class="text-gray-600">There are no {{ resource?.name.toLowerCase() || 'resources' }} in the current context.</p>
             </div>
           </div>
@@ -188,7 +188,7 @@
     >
       <button
         @click="showDeleteConfirmation = true"
-        class="bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110"
+        class="btn-danger rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110"
         :title="`Delete ${selectedItems.size} selected resource${selectedItems.size > 1 ? 's' : ''}`"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

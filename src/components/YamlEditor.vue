@@ -18,7 +18,7 @@
         <button
           @click="save"
           :disabled="!isDirty || hasValidationError || isSaving"
-          class="px-3 py-1 text-xs font-medium text-white bg-blue-600 border border-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn-primary text-xs px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ isSaving ? 'Saving...' : 'Save' }}
         </button>

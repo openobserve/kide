@@ -34,7 +34,7 @@
           <template v-if="resource?.kind === 'Pod'">
             <button
               @click.stop="$emit('openPodLogs', item)"
-              class="w-6 h-6 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors duration-200"
+              class="btn-icon-primary w-6 h-6"
               title="View Pod Logs"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,7 +43,7 @@
             </button>
             <button
               @click.stop="$emit('openPodShell', item)"
-              class="w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-colors duration-200"
+              class="btn-icon-success w-6 h-6"
               title="Open Shell"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@
           <!-- Delete button -->
           <button
             @click.stop="$emit('deleteResource', item)"
-            class="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors duration-200"
+            class="btn-icon-danger w-6 h-6"
             :title="`Delete ${resource?.kind || 'Resource'}`"
           >
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
