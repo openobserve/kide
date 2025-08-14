@@ -122,35 +122,51 @@ export const useResourceStore = defineStore('resources', (): {
       namespaceChangeTimeout = null
     }
     
-    // Clear previous errors but keep initial data flag (we're just switching namespaces)
+    // Clear previous errors
     watchError.value = null
+    error.value = null
     
     // Don't restart watch if no resource is selected or resource is not namespaced
     if (!selectedResource.value || !selectedResource.value.namespaced) {
       return
     }
     
-    // Set loading state immediately
+    // Set loading state immediately but keep hasInitialData true to avoid flash of "no resources"
     isChangingNamespaces.value = true
     loading.value = true
     
     try {
-      // Subscribe to the same resource with new namespace - this will get immediate cached data!
-      const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
+      const subscribeParams = {
         resourceType: selectedResource.value.name.toLowerCase(),
         namespace: newNamespaces.length === 1 ? newNamespaces[0] : null
-      })
+      }
       
-      // Set the cached data immediately (no delay!)
+      console.log(`🔄 Changing namespaces for ${selectedResource.value.name} to:`, newNamespaces, 'Subscribe params:', subscribeParams)
+      
+      // Subscribe to the same resource with new namespace - this will get immediate cached data!
+      const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', subscribeParams)
+      
+      console.log(`📦 Received ${cachedData?.length || 0} cached items for namespace change`)
+      
+      // Set the cached data immediately
       resourceItems.value = cachedData || []
       
-      // Always reset hasInitialData when changing namespaces - wait for watch events or timeout
-      hasInitialData.value = false
-      createTimeout(() => {
+      // If we got cached data, we're done - no need to wait
+      if (cachedData && cachedData.length > 0) {
         hasInitialData.value = true
-        loading.value = false // Stop loading after timeout
-        isChangingNamespaces.value = false // Stop namespace changing state
-      }, 2000) // 2 second timeout to allow initial watch events
+        loading.value = false
+        isChangingNamespaces.value = false
+        console.log(`✅ Namespace change completed immediately with ${cachedData.length} items`)
+      } else {
+        // For empty results, wait briefly for watch events but don't reset hasInitialData
+        console.log(`⏳ No cached data, waiting for watch events...`)
+        createTimeout(() => {
+          hasInitialData.value = true
+          loading.value = false
+          isChangingNamespaces.value = false
+          console.log(`⏰ Namespace change timeout completed, final count: ${resourceItems.value.length}`)
+        }, 1000) // Reduced timeout to 1 second for better UX
+      }
       
       // Clear any previous watch errors on successful subscription
       watchError.value = null
@@ -160,10 +176,9 @@ export const useResourceStore = defineStore('resources', (): {
       watchError.value = errorMessage
       error.value = errorMessage
       resourceItems.value = []
-      hasInitialData.value = true // Error responses count as "data received"
-    } finally {
-      // Don't set loading states to false here - let the timeout or InitialSyncComplete event handle it
-      // This ensures we don't show "No X found" before we receive initial data
+      hasInitialData.value = true
+      loading.value = false
+      isChangingNamespaces.value = false
     }
   }
 
@@ -173,7 +188,7 @@ export const useResourceStore = defineStore('resources', (): {
       return
     }
     
-    // Handle InitialSyncComplete specially - always process this even during namespace changes
+    // Handle InitialSyncComplete specially - always process this
     if (event === 'InitialSyncComplete') {
       hasInitialData.value = true
       loading.value = false
@@ -181,10 +196,8 @@ export const useResourceStore = defineStore('resources', (): {
       return
     }
     
-    // Skip other events during namespace changes to prevent conflicts
-    if (isChangingNamespaces.value) {
-      return
-    }
+    // Don't skip events during namespace changes - just process them normally
+    // The filtering logic in processBatchedEvents will handle namespace matching
     
     // Mark that we've received initial data from watch events
     hasInitialData.value = true
@@ -214,6 +227,11 @@ export const useResourceStore = defineStore('resources', (): {
     // Get selected namespaces from cluster store
     const clusterStore = useClusterStore()
     const selectedNamespaces = clusterStore.selectedNamespaces
+    
+    // If no namespaces are selected, don't process events
+    if (selectedResource.value?.namespaced && selectedNamespaces.length === 0) {
+      return
+    }
     
     const itemsMap = new Map<string, K8sListItem>()
     
@@ -277,7 +295,11 @@ export const useResourceStore = defineStore('resources', (): {
     }
     
     // Update resource items in a single operation
-    resourceItems.value = Array.from(itemsMap.values())
+    const newItems = Array.from(itemsMap.values())
+    if (newItems.length !== resourceItems.value.length) {
+      console.log(`📈 Resource count changed: ${resourceItems.value.length} → ${newItems.length} for ${selectedResource.value?.name}`)
+    }
+    resourceItems.value = newItems
   }
 
   async function refreshAfterResourceDeleted(namespaces: string[]): Promise<void> {
