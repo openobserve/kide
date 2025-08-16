@@ -190,7 +190,7 @@
     >
       <button
         @click="showDeleteConfirmation = true"
-        class="btn-danger rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110"
+        class="bg-status-error text-white hover:opacity-90 transition-all duration-200 transform hover:scale-110 rounded-full p-4 shadow-lg hover:shadow-xl font-medium"
         :title="`Delete ${selectedItems.size} selected resource${selectedItems.size > 1 ? 's' : ''}`"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
