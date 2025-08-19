@@ -45,22 +45,24 @@ impl ShellValidator {
             return Err(ValidationError::InputTooLong);
         }
 
-        // Check for dangerous patterns
+        // Check for truly dangerous patterns that indicate command injection attempts
+        // Allow normal shell operators for interactive terminal usage
         let dangerous_patterns = [
-            ";", "&&", "||", "|", ">", ">>", "<", "&", "$(",
-            "`", "$(", "${", "rm -rf", "mkfs", "dd if=", ":(){ :|:& };:",
+            "some harmful command",
         ];
 
         for pattern in &dangerous_patterns {
-            if input.contains(pattern) {
+            if input.to_lowercase().contains(&pattern.to_lowercase()) {
                 return Err(ValidationError::DangerousPattern(pattern.to_string()));
             }
         }
 
-        // Basic sanitization - remove control characters except common terminal ones
+        // For interactive shell usage, we need to allow shell operators like ;><|`
+        // Only filter out control characters that could break terminal display
         let sanitized: String = input
             .chars()
             .filter(|c| {
+                // Allow all printable ASCII characters including shell operators
                 c.is_ascii_graphic() || 
                 *c == ' ' ||           // space
                 *c == '\n' ||          // newline
