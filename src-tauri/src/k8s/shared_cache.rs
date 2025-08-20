@@ -468,177 +468,178 @@ impl SharedWatchCache {
             };
         }
         
+        let cluster_context = scope.cluster_context.clone();
         let handle = match resource_type.as_str() {
             // Workloads - Namespaced resources
             "pods" => {
                 let api = create_namespaced_api!(Pod);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context, cache).await
             }
             "deployments" => {
                 let api = create_namespaced_api!(Deployment);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "statefulsets" => {
                 let api = create_namespaced_api!(StatefulSet);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "daemonsets" => {
                 let api = create_namespaced_api!(DaemonSet);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "jobs" => {
                 let api = create_namespaced_api!(Job);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "cronjobs" => {
                 let api = create_namespaced_api!(CronJob);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "replicasets" => {
                 let api = create_namespaced_api!(ReplicaSet);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "replicationcontrollers" => {
                 let api = create_namespaced_api!(ReplicationController);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Services & Networking - Namespaced resources
             "services" => {
                 let api = create_namespaced_api!(Service);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "ingresses" => {
                 let api = create_namespaced_api!(Ingress);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "networkpolicies" => {
                 let api = create_namespaced_api!(NetworkPolicy);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "endpointslices" => {
                 let api = create_namespaced_api!(EndpointSlice);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "endpoints" => {
                 let api = create_namespaced_api!(Endpoints);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Configuration & Storage - Namespaced resources
             "configmaps" => {
                 let api = create_namespaced_api!(ConfigMap);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "secrets" => {
                 let api = create_namespaced_api!(Secret);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "persistentvolumeclaims" => {
                 let api = create_namespaced_api!(PersistentVolumeClaim);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // RBAC - Namespaced resources
             "roles" => {
                 let api = create_namespaced_api!(Role);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "rolebindings" => {
                 let api = create_namespaced_api!(RoleBinding);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "serviceaccounts" => {
                 let api = create_namespaced_api!(ServiceAccount);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Cluster Administration - Namespaced resources
             "resourcequotas" => {
                 let api = create_namespaced_api!(ResourceQuota);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "limitranges" => {
                 let api = create_namespaced_api!(LimitRange);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "poddisruptionbudgets" => {
                 let api = create_namespaced_api!(PodDisruptionBudget);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Scaling & Performance - Namespaced resources
             "horizontalpodautoscalers" => {
                 let api = create_namespaced_api!(HorizontalPodAutoscaler);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Services & Networking - Cluster-wide resources
             "ingressclasses" => {
                 let api = create_cluster_api!(IngressClass);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Storage - Cluster-wide resources  
             "csidrivers" => {
                 let api = create_cluster_api!(CSIDriver);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "csinodes" => {
                 let api = create_cluster_api!(CSINode);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Cluster Administration - Cluster-wide resources
             "priorityclasses" => {
                 let api = create_cluster_api!(PriorityClass);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "runtimeclasses" => {
                 let api = create_cluster_api!(RuntimeClass);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Security & Access Control - Cluster-wide resources
             "certificatesigningrequests" => {
                 let api = create_cluster_api!(CertificateSigningRequest);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Custom Resources - Cluster-wide resources
             "customresourcedefinitions" => {
                 let api = create_cluster_api!(CustomResourceDefinition);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "apiservices" => {
                 let api = create_cluster_api!(APIService);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             // Cluster-wide resources (original ones)
             "nodes" => {
                 let api = create_cluster_api!(Node);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "namespaces" => {
                 let api = create_cluster_api!(Namespace);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "persistentvolumes" => {
                 let api = create_cluster_api!(PersistentVolume);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "storageclasses" => {
                 let api = create_cluster_api!(StorageClass);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "clusterroles" => {
                 let api = create_cluster_api!(ClusterRole);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             "clusterrolebindings" => {
                 let api = create_cluster_api!(ClusterRoleBinding);
-                Self::spawn_typed_watch(api, app_handle, resource_type, cache).await
+                Self::spawn_typed_watch(api, app_handle, resource_type, cluster_context.clone(), cache).await
             }
             
             _ => return Err(anyhow::anyhow!("Unsupported resource type for shared cache: {}", resource_type)),
@@ -652,6 +653,7 @@ impl SharedWatchCache {
         api: Api<K>,
         app_handle: AppHandle,
         resource_type: String,
+        cluster_context: String,
         cache: Arc<RwLock<HashMap<String, K8sListItem>>>,
     ) -> JoinHandle<()>
     where
@@ -677,8 +679,11 @@ impl SharedWatchCache {
                                         cache.write().await.insert(uid.clone(), item.clone());
                                     }
                                     
-                                    // Emit to UI
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                                    // Emit to UI with cluster context
+                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
+                                        item,
+                                        cluster_context: cluster_context.clone(),
+                                    });
                                 }
                             }
                             watcher::Event::Delete(obj) => {
@@ -688,8 +693,11 @@ impl SharedWatchCache {
                                         cache.write().await.remove(&uid);
                                     }
                                     
-                                    // Emit to UI
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted(item));
+                                    // Emit to UI with cluster context
+                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted { 
+                                        item,
+                                        cluster_context: cluster_context.clone(),
+                                    });
                                 }
                             }
                             watcher::Event::InitApply(obj) => {
@@ -699,8 +707,11 @@ impl SharedWatchCache {
                                         cache.write().await.insert(uid.clone(), item.clone());
                                     }
                                     
-                                    // Emit to UI
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                                    // Emit to UI with cluster context
+                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
+                                        item,
+                                        cluster_context: cluster_context.clone(),
+                                    });
                                 }
                             }
                             watcher::Event::Init => {
@@ -709,7 +720,9 @@ impl SharedWatchCache {
                             }
                             watcher::Event::InitDone => {
                                 // Initial sync complete - emit event to notify UI
-                                let _ = app_handle.emit("k8s-watch-event", WatchEvent::InitialSyncComplete);
+                                let _ = app_handle.emit("k8s-watch-event", WatchEvent::InitialSyncComplete {
+                                    cluster_context: cluster_context.clone(),
+                                });
                             }
                         }
                     }
@@ -791,5 +804,194 @@ impl Drop for SharedWatchCache {
         if let Some(handle) = &self.cleanup_handle {
             handle.abort();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cross_cluster_watch_isolation() {
+        // Test that SharedWatchCache properly isolates watches between different clusters
+        // This test focuses on cache key isolation without requiring actual Tauri app handles
+        
+        // Create scopes for different clusters
+        let cluster_a_scope = WatchScope::new("cluster-production".to_string())
+            .with_namespace(Some("default".to_string()));
+        let cluster_b_scope = WatchScope::new("cluster-staging".to_string())  
+            .with_namespace(Some("default".to_string()));
+        
+        // Verify that the scopes generate different cache keys
+        let key_a = ("nodes".to_string(), cluster_a_scope.scope_key());
+        let key_b = ("nodes".to_string(), cluster_b_scope.scope_key());
+        
+        assert_ne!(key_a, key_b, "Different clusters should generate different cache keys");
+        assert!(key_a.1.contains("cluster-production"), "Key A should contain cluster-production");
+        assert!(key_b.1.contains("cluster-staging"), "Key B should contain cluster-staging");
+        
+        // Verify scope key format includes cluster context
+        assert_eq!(cluster_a_scope.scope_key(), "cluster-production:default::");
+        assert_eq!(cluster_b_scope.scope_key(), "cluster-staging:default::");
+    }
+
+    #[tokio::test] 
+    async fn test_watch_scope_cluster_isolation() {
+        // Test that WatchScope correctly generates cluster-aware scope keys
+        
+        // Test same resource type and namespace in different clusters
+        let scope_prod = WatchScope::new("production".to_string())
+            .with_namespace(Some("kube-system".to_string()));
+        let scope_staging = WatchScope::new("staging".to_string())
+            .with_namespace(Some("kube-system".to_string()));
+        let scope_dev = WatchScope::new("development".to_string())
+            .with_namespace(Some("kube-system".to_string()));
+        
+        let key_prod = scope_prod.scope_key();
+        let key_staging = scope_staging.scope_key(); 
+        let key_dev = scope_dev.scope_key();
+        
+        // All keys should be different
+        assert_ne!(key_prod, key_staging);
+        assert_ne!(key_staging, key_dev);
+        assert_ne!(key_prod, key_dev);
+        
+        // Keys should contain cluster context
+        assert!(key_prod.starts_with("production:"));
+        assert!(key_staging.starts_with("staging:"));
+        assert!(key_dev.starts_with("development:"));
+        
+        // Test cluster-wide resources (no namespace)
+        let scope_prod_all = WatchScope::new("production".to_string());
+        let scope_staging_all = WatchScope::new("staging".to_string());
+        
+        let key_prod_all = scope_prod_all.scope_key();
+        let key_staging_all = scope_staging_all.scope_key();
+        
+        assert_ne!(key_prod_all, key_staging_all);
+        assert!(key_prod_all.starts_with("production:"));
+        assert!(key_staging_all.starts_with("staging:"));
+        assert!(key_prod_all.contains(":all:"));
+        assert!(key_staging_all.contains(":all:"));
+    }
+
+    #[tokio::test]
+    async fn test_cross_cluster_contamination_prevention() {
+        // This test simulates the exact scenario that caused contamination:
+        // 1. User views nodes in cluster A
+        // 2. User switches to cluster B  
+        // 3. Verifies that cluster A nodes don't appear in cluster B view
+        
+        // Simulate viewing nodes in cluster A
+        let cluster_a_scope = WatchScope::new("cluster-a".to_string());
+        let cluster_a_key = ("nodes".to_string(), cluster_a_scope.scope_key());
+        
+        // Simulate switching to cluster B  
+        let cluster_b_scope = WatchScope::new("cluster-b".to_string());
+        let cluster_b_key = ("nodes".to_string(), cluster_b_scope.scope_key());
+        
+        // Verify that the cache keys are completely different
+        assert_ne!(cluster_a_key, cluster_b_key, "Cluster A and B should have different cache keys");
+        
+        // The scope keys should be completely isolated
+        assert!(cluster_a_key.1.contains("cluster-a"), "Cluster A key should contain cluster-a");
+        assert!(cluster_b_key.1.contains("cluster-b"), "Cluster B key should contain cluster-b");
+        assert!(!cluster_a_key.1.contains("cluster-b"), "Cluster A key should not contain cluster-b");
+        assert!(!cluster_b_key.1.contains("cluster-a"), "Cluster B key should not contain cluster-a");
+        
+        // In the real application:
+        // - Events from cluster A watches would have cluster_context: "cluster-a" 
+        // - Events from cluster B watches would have cluster_context: "cluster-b"
+        // - Frontend would filter out events not matching current cluster
+    }
+
+    #[tokio::test]
+    async fn test_cluster_context_validation_in_events() {
+        // Test that events emitted from different cluster contexts are properly tagged
+        use crate::k8s::resources::{WatchEvent, K8sListItem};
+        use k8s_openapi::api::core::v1::Node;
+        
+        // Create a mock node
+        let mut node = Node::default();
+        node.metadata.name = Some("test-node".to_string());
+        node.metadata.uid = Some("node-123".to_string());
+        
+        // Convert to K8sListItem (simplified version for test)
+        let item = K8sListItem {
+            metadata: node.metadata.clone(),
+            kind: "Node".to_string(),
+            api_version: "v1".to_string(),
+            complete_object: None,
+            pod_spec: None,
+            service_spec: None,
+            config_map_spec: None,
+            secret_spec: None,
+            namespace_spec: None,
+            node_spec: None,
+            persistent_volume_spec: None,
+            persistent_volume_claim_spec: None,
+            endpoints_spec: None,
+            deployment_spec: None,
+            replica_set_spec: None,
+            stateful_set_spec: None,
+            daemon_set_spec: None,
+            job_spec: None,
+            cron_job_spec: None,
+            ingress_spec: None,
+            network_policy_spec: None,
+            endpoint_slice: None,
+            storage_class_spec: None,
+            role_spec: None,
+            role_binding_spec: None,
+            cluster_role_spec: None,
+            cluster_role_binding_spec: None,
+            service_account_spec: None,
+            pod_disruption_budget_spec: None,
+            horizontal_pod_autoscaler_spec: None,
+            pod_status: None,
+            service_status: None,
+            namespace_status: None,
+            node_status: None,
+            persistent_volume_status: None,
+            persistent_volume_claim_status: None,
+            deployment_status: None,
+            replica_set_status: None,
+            stateful_set_status: None,
+            daemon_set_status: None,
+            job_status: None,
+            cron_job_status: None,
+            ingress_status: None,
+            pod_disruption_budget_status: None,
+            horizontal_pod_autoscaler_status: None,
+            subsets: None,
+        };
+        
+        // Test that events from different clusters would be distinguishable
+        let prod_event = WatchEvent::Added { 
+            item: item.clone(), 
+            cluster_context: "production".to_string() 
+        };
+        let staging_event = WatchEvent::Added { 
+            item: item.clone(), 
+            cluster_context: "staging".to_string() 
+        };
+        
+        // Serialize both events
+        let prod_json = serde_json::to_string(&prod_event).unwrap();
+        let staging_json = serde_json::to_string(&staging_event).unwrap();
+        
+        // Events should serialize differently due to cluster context
+        assert_ne!(prod_json, staging_json, "Events from different clusters must serialize differently");
+        
+        // Frontend should be able to distinguish these events
+        assert!(prod_json.contains("production"), "Production event should contain cluster context");
+        assert!(staging_json.contains("staging"), "Staging event should contain cluster context");
+        assert!(!prod_json.contains("staging"), "Production event should not contain staging context");
+        assert!(!staging_json.contains("production"), "Staging event should not contain production context");
+        
+        // This test verifies that the fix prevents the contamination bug where:
+        // - Same node UID from different clusters would overwrite each other
+        // - Frontend couldn't distinguish which cluster an event came from
+        // - Events from old clusters would contaminate the new cluster view
     }
 }

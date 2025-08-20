@@ -149,20 +149,24 @@ mod tests {
         }
         
         // Test in WatchEvent (this is what gets sent through Tauri IPC)
-        let watch_event = WatchEvent::Added(list_item);
+        let watch_event = WatchEvent::Added { 
+            item: list_item.clone(),
+            cluster_context: "test-cluster".to_string(),
+        };
         let event_serialization = serde_json::to_string(&watch_event);
         match event_serialization {
             Ok(json) => {
                 
                 let event_deserialization: Result<WatchEvent, _> = serde_json::from_str(&json);
                 match event_deserialization {
-                    Ok(WatchEvent::Added(item)) => {
+                    Ok(WatchEvent::Added { item, cluster_context }) => {
                         assert_eq!(item.kind, "Pod");
+                        assert_eq!(cluster_context, "test-cluster");
                     },
-                    Ok(WatchEvent::Modified(_)) | Ok(WatchEvent::Deleted(_)) => {
+                    Ok(WatchEvent::Modified { .. }) | Ok(WatchEvent::Deleted { .. }) => {
                         panic!("Expected WatchEvent::Added, got different event type");
                     },
-                    Ok(WatchEvent::InitialSyncComplete) => {
+                    Ok(WatchEvent::InitialSyncComplete { .. }) => {
                         panic!("Expected WatchEvent::Added, got InitialSyncComplete");
                     },
                     Err(e) => panic!("WatchEvent deserialization failed: {}", e),
@@ -242,7 +246,10 @@ mod tests {
             Err(e) => panic!("K8sListItem serialization failed: {}", e),
         }
         
-        let watch_event = WatchEvent::Added(list_item);
+        let watch_event = WatchEvent::Added { 
+            item: list_item,
+            cluster_context: "test-cluster".to_string(),
+        };
         let event_serialization = serde_json::to_string(&watch_event);
         match event_serialization {
             Ok(json) => {

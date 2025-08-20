@@ -188,11 +188,34 @@ export const useResourceStore = defineStore('resources', (): {
       return
     }
     
+    // Get current cluster context to filter events
+    const clusterStore = useClusterStore()
+    const currentCluster = clusterStore.currentContextName()
+    
     // Handle InitialSyncComplete specially - always process this
-    if (event === 'InitialSyncComplete') {
-      hasInitialData.value = true
-      loading.value = false
-      isChangingNamespaces.value = false
+    if ('InitialSyncComplete' in event) {
+      // Only process if it's from the current cluster
+      if (event.InitialSyncComplete.clusterContext === currentCluster) {
+        hasInitialData.value = true
+        loading.value = false
+        isChangingNamespaces.value = false
+      }
+      return
+    }
+    
+    // Filter events by cluster context to prevent cross-cluster contamination
+    let eventClusterContext: string | undefined
+    if ('Added' in event) {
+      eventClusterContext = event.Added.clusterContext
+    } else if ('Modified' in event) {
+      eventClusterContext = event.Modified.clusterContext
+    } else if ('Deleted' in event) {
+      eventClusterContext = event.Deleted.clusterContext
+    }
+    
+    // Skip events from other clusters
+    if (eventClusterContext !== currentCluster) {
+      console.log(`🚫 Skipping event from different cluster: ${eventClusterContext} (current: ${currentCluster})`)
       return
     }
     
@@ -253,10 +276,24 @@ export const useResourceStore = defineStore('resources', (): {
     
     // Process all events in batch
     for (const event of eventBatch) {
-      // Check different possible event structures
-      const addedItem = (event as any).Added || (event as any).added || event
-      const modifiedItem = (event as any).Modified || (event as any).modified
-      const deletedItem = (event as any).Deleted || (event as any).deleted
+      // Extract item from the new event structure
+      let addedItem: K8sListItem | undefined
+      let modifiedItem: K8sListItem | undefined  
+      let deletedItem: K8sListItem | undefined
+      
+      if ('Added' in event) {
+        addedItem = event.Added.item
+      } else if ('Modified' in event) {
+        modifiedItem = event.Modified.item
+      } else if ('Deleted' in event) {
+        deletedItem = event.Deleted.item
+      } else {
+        // Fallback for legacy event format (shouldn't happen with new backend)
+        const legacyEvent = event as any
+        addedItem = legacyEvent.Added || legacyEvent.added || legacyEvent
+        modifiedItem = legacyEvent.Modified || legacyEvent.modified
+        deletedItem = legacyEvent.Deleted || legacyEvent.deleted
+      }
       
       // Helper function to check if item should be included based on resource type and namespace
       const shouldIncludeItem = (item: K8sListItem): boolean => {

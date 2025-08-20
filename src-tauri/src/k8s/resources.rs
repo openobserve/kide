@@ -192,13 +192,24 @@ pub struct K8sListItem {
 #[serde(rename_all = "camelCase")]
 pub enum WatchEvent {
     /// A new resource was created or discovered
-    Added(K8sListItem),
+    Added { 
+        item: K8sListItem,
+        cluster_context: String,
+    },
     /// An existing resource was updated
-    Modified(K8sListItem),
+    Modified { 
+        item: K8sListItem,
+        cluster_context: String,
+    },
     /// A resource was deleted
-    Deleted(K8sListItem),
+    Deleted { 
+        item: K8sListItem,
+        cluster_context: String,
+    },
     /// Initial watch synchronization is complete (no more items)
-    InitialSyncComplete,
+    InitialSyncComplete {
+        cluster_context: String,
+    },
 }
 
 /// Returns all supported Kubernetes resource types organized by category.
@@ -754,17 +765,196 @@ mod tests {
             subsets: None,
         };
 
-        let event = WatchEvent::Added(item);
+        let event = WatchEvent::Added { 
+            item: item.clone(),
+            cluster_context: "test-cluster".to_string(),
+        };
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: WatchEvent = serde_json::from_str(&json).unwrap();
 
         match deserialized {
-            WatchEvent::Added(item) => {
+            WatchEvent::Added { item, cluster_context } => {
                 assert_eq!(item.metadata.name, Some("test-pod".to_string()));
                 assert_eq!(item.kind, "Pod");
                 assert_eq!(item.pod_status.as_ref().unwrap().phase, Some("Running".to_string()));
+                assert_eq!(cluster_context, "test-cluster");
             }
             _ => panic!("Expected Added event"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cross_cluster_event_isolation() {
+        // Test that watch events include cluster context for proper isolation
+        use k8s_openapi::api::core::v1::Pod;
+        
+        let mut pod = Pod::default();
+        pod.metadata.name = Some("test-pod".to_string());
+        pod.metadata.namespace = Some("default".to_string());
+        pod.metadata.uid = Some("test-uid".to_string());
+        
+        let item = K8sListItem {
+            metadata: pod.metadata.clone(),
+            kind: "Pod".to_string(),
+            api_version: "v1".to_string(),
+            complete_object: None,
+            pod_spec: None,
+            service_spec: None,
+            config_map_spec: None,
+            secret_spec: None,
+            namespace_spec: None,
+            node_spec: None,
+            persistent_volume_spec: None,
+            persistent_volume_claim_spec: None,
+            endpoints_spec: None,
+            deployment_spec: None,
+            replica_set_spec: None,
+            stateful_set_spec: None,
+            daemon_set_spec: None,
+            job_spec: None,
+            cron_job_spec: None,
+            ingress_spec: None,
+            network_policy_spec: None,
+            endpoint_slice: None,
+            storage_class_spec: None,
+            role_spec: None,
+            role_binding_spec: None,
+            cluster_role_spec: None,
+            cluster_role_binding_spec: None,
+            service_account_spec: None,
+            pod_disruption_budget_spec: None,
+            horizontal_pod_autoscaler_spec: None,
+            pod_status: None,
+            service_status: None,
+            namespace_status: None,
+            node_status: None,
+            persistent_volume_status: None,
+            persistent_volume_claim_status: None,
+            deployment_status: None,
+            replica_set_status: None,
+            stateful_set_status: None,
+            daemon_set_status: None,
+            job_status: None,
+            cron_job_status: None,
+            ingress_status: None,
+            pod_disruption_budget_status: None,
+            horizontal_pod_autoscaler_status: None,
+            subsets: None,
+        };
+
+        // Test events from different clusters
+        let cluster_a_event = WatchEvent::Added {
+            item: item.clone(),
+            cluster_context: "cluster-production".to_string(),
+        };
+        
+        let cluster_b_event = WatchEvent::Added {
+            item: item.clone(),
+            cluster_context: "cluster-staging".to_string(),
+        };
+
+        // Serialize and verify both events
+        let json_a = serde_json::to_string(&cluster_a_event).unwrap();
+        let json_b = serde_json::to_string(&cluster_b_event).unwrap();
+
+        // Events should be different due to cluster context
+        assert_ne!(json_a, json_b, "Events from different clusters should serialize differently");
+
+        // Deserialize and verify cluster context is preserved
+        let deserialized_a: WatchEvent = serde_json::from_str(&json_a).unwrap();
+        let deserialized_b: WatchEvent = serde_json::from_str(&json_b).unwrap();
+
+        match (deserialized_a, deserialized_b) {
+            (WatchEvent::Added { cluster_context: ctx_a, .. }, WatchEvent::Added { cluster_context: ctx_b, .. }) => {
+                assert_eq!(ctx_a, "cluster-production");
+                assert_eq!(ctx_b, "cluster-staging");
+                assert_ne!(ctx_a, ctx_b, "Cluster contexts should be different");
+            }
+            _ => panic!("Both events should be Added events"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_watch_event_cluster_context_required() {
+        // Test that all WatchEvent variants require cluster context
+        use k8s_openapi::api::core::v1::Node;
+        
+        let mut node = Node::default();
+        node.metadata.name = Some("worker-node-1".to_string());
+        node.metadata.uid = Some("node-uid".to_string());
+        
+        let item = K8sListItem {
+            metadata: node.metadata.clone(),
+            kind: "Node".to_string(),
+            api_version: "v1".to_string(),
+            complete_object: None,
+            pod_spec: None,
+            service_spec: None,
+            config_map_spec: None,
+            secret_spec: None,
+            namespace_spec: None,
+            node_spec: None,
+            persistent_volume_spec: None,
+            persistent_volume_claim_spec: None,
+            endpoints_spec: None,
+            deployment_spec: None,
+            replica_set_spec: None,
+            stateful_set_spec: None,
+            daemon_set_spec: None,
+            job_spec: None,
+            cron_job_spec: None,
+            ingress_spec: None,
+            network_policy_spec: None,
+            endpoint_slice: None,
+            storage_class_spec: None,
+            role_spec: None,
+            role_binding_spec: None,
+            cluster_role_spec: None,
+            cluster_role_binding_spec: None,
+            service_account_spec: None,
+            pod_disruption_budget_spec: None,
+            horizontal_pod_autoscaler_spec: None,
+            pod_status: None,
+            service_status: None,
+            namespace_status: None,
+            node_status: None,
+            persistent_volume_status: None,
+            persistent_volume_claim_status: None,
+            deployment_status: None,
+            replica_set_status: None,
+            stateful_set_status: None,
+            daemon_set_status: None,
+            job_status: None,
+            cron_job_status: None,
+            ingress_status: None,
+            pod_disruption_budget_status: None,
+            horizontal_pod_autoscaler_status: None,
+            subsets: None,
+        };
+
+        let cluster_context = "test-cluster".to_string();
+
+        // Test all event types include cluster context
+        let test_events = vec![
+            WatchEvent::Added { item: item.clone(), cluster_context: cluster_context.clone() },
+            WatchEvent::Modified { item: item.clone(), cluster_context: cluster_context.clone() },
+            WatchEvent::Deleted { item, cluster_context: cluster_context.clone() },
+            WatchEvent::InitialSyncComplete { cluster_context: cluster_context.clone() },
+        ];
+
+        for event in test_events {
+            let json = serde_json::to_string(&event).unwrap();
+            let deserialized: WatchEvent = serde_json::from_str(&json).unwrap();
+            
+            // Verify cluster context is preserved in all event types
+            let preserved_context = match deserialized {
+                WatchEvent::Added { cluster_context, .. } => cluster_context,
+                WatchEvent::Modified { cluster_context, .. } => cluster_context,
+                WatchEvent::Deleted { cluster_context, .. } => cluster_context,
+                WatchEvent::InitialSyncComplete { cluster_context } => cluster_context,
+            };
+            
+            assert_eq!(preserved_context, "test-cluster", "Cluster context must be preserved in all event types");
         }
     }
 

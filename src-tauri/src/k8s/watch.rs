@@ -396,17 +396,29 @@ where
         match event {
             Ok(watcher::Event::Apply(obj)) => {
                 if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                    let cluster_context = K8sClient::get_current_context().await.unwrap_or_else(|_| "unknown".to_string());
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
+                        item,
+                        cluster_context,
+                    });
                 }
             }
             Ok(watcher::Event::Delete(obj)) => {
                 if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted(item));
+                    let cluster_context = K8sClient::get_current_context().await.unwrap_or_else(|_| "unknown".to_string());
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted { 
+                        item,
+                        cluster_context,
+                    });
                 }
             }
             Ok(watcher::Event::InitApply(obj)) => {
                 if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added(item));
+                    let cluster_context = K8sClient::get_current_context().await.unwrap_or_else(|_| "unknown".to_string());
+                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
+                        item,
+                        cluster_context,
+                    });
                 }
             }
             Ok(watcher::Event::Init) => {

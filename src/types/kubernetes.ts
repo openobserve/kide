@@ -176,9 +176,11 @@ export interface K8sResourceCategory {
 
 export type WatchEventType = 'Added' | 'Modified' | 'Deleted' | 'InitialSyncComplete'
 
-export type WatchEvent = {
-  [key: string]: K8sListItem | undefined
-} | 'InitialSyncComplete'
+export type WatchEvent = 
+  | { Added: { item: K8sListItem; clusterContext: string } }
+  | { Modified: { item: K8sListItem; clusterContext: string } }
+  | { Deleted: { item: K8sListItem; clusterContext: string } }
+  | { InitialSyncComplete: { clusterContext: string } }
 
 // Kubernetes context types
 export interface K8sContext {
