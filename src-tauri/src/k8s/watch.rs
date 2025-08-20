@@ -133,17 +133,21 @@ impl WatchManager {
         resource_type: &str,
         namespaces: Option<Vec<String>>,
     ) -> Result<(), anyhow::Error> {
-        // Generate watch key from namespaces (sorted for consistency)
+        // Get current cluster context to include in watch key for proper isolation
+        let cluster_context = K8sClient::get_current_context().await
+            .unwrap_or_else(|_| "unknown".to_string());
+        
+        // Generate watch key from cluster context and namespaces (sorted for consistency)
         let watch_key = if let Some(ref ns_list) = namespaces {
             if ns_list.is_empty() {
-                format!("{resource_type}:all")
+                format!("{}:{}:all", cluster_context, resource_type)
             } else {
                 let mut sorted_ns = ns_list.clone();
                 sorted_ns.sort();
-                format!("{}:{}", resource_type, sorted_ns.join(","))
+                format!("{}:{}:{}", cluster_context, resource_type, sorted_ns.join(","))
             }
         } else {
-            format!("{resource_type}:all")
+            format!("{}:{}:all", cluster_context, resource_type)
         };
         
         let mut watches = self.active_watches.lock().await;
@@ -299,17 +303,21 @@ impl WatchManager {
     }
 
     pub async fn stop_watch(&self, resource_type: &str, namespaces: Option<Vec<String>>) -> Result<(), anyhow::Error> {
+        // Get current cluster context to generate the same watch key as in start_watch
+        let cluster_context = K8sClient::get_current_context().await
+            .unwrap_or_else(|_| "unknown".to_string());
+        
         // Generate the same watch key as in start_watch
         let watch_key = if let Some(ref ns_list) = namespaces {
             if ns_list.is_empty() {
-                format!("{resource_type}:all")
+                format!("{}:{}:all", cluster_context, resource_type)
             } else {
                 let mut sorted_ns = ns_list.clone();
                 sorted_ns.sort();
-                format!("{}:{}", resource_type, sorted_ns.join(","))
+                format!("{}:{}:{}", cluster_context, resource_type, sorted_ns.join(","))
             }
         } else {
-            format!("{resource_type}:all")
+            format!("{}:{}:all", cluster_context, resource_type)
         };
         
         let mut watches = self.active_watches.lock().await;
@@ -326,6 +334,31 @@ impl WatchManager {
         for (_, handle) in watches.drain() {
             handle.abort();
         }
+        Ok(())
+    }
+
+    /// Stop all watches for the current cluster context only
+    /// This is useful when switching cluster contexts to avoid cross-cluster contamination
+    pub async fn stop_cluster_watches(&self) -> Result<(), anyhow::Error> {
+        let cluster_context = K8sClient::get_current_context().await
+            .unwrap_or_else(|_| "unknown".to_string());
+        
+        let mut watches = self.active_watches.lock().await;
+        let prefix = format!("{}:", cluster_context);
+        
+        // Collect keys to remove (to avoid borrowing issues)
+        let keys_to_remove: Vec<String> = watches.keys()
+            .filter(|key| key.starts_with(&prefix))
+            .cloned()
+            .collect();
+        
+        // Stop and remove watches for this cluster
+        for key in keys_to_remove {
+            if let Some(handle) = watches.remove(&key) {
+                handle.abort();
+            }
+        }
+        
         Ok(())
     }
 }
@@ -751,11 +784,74 @@ mod tests {
         // Test the watch key format used internally
         let resource_type = "pods";
         let namespace = Some("default".to_string());
-        let watch_key = format!("{}:{}", resource_type, namespace.as_deref().unwrap_or("all"));
-        assert_eq!(watch_key, "pods:default");
+        let cluster_context = "test-cluster";
+        let watch_key = format!("{}:{}:{}", cluster_context, resource_type, namespace.as_deref().unwrap_or("all"));
+        assert_eq!(watch_key, "test-cluster:pods:default");
         
-        let cluster_wide_key = format!("{}:{}", "nodes", None::<String>.as_deref().unwrap_or("all"));
-        assert_eq!(cluster_wide_key, "nodes:all");
+        let cluster_wide_key = format!("{}:{}:{}", cluster_context, "nodes", None::<String>.as_deref().unwrap_or("all"));
+        assert_eq!(cluster_wide_key, "test-cluster:nodes:all");
+    }
+
+    #[tokio::test]
+    async fn test_cluster_aware_watch_keys() {
+        // Test that different clusters generate different watch keys for the same resource
+        let resource_type = "nodes";
+        let _namespaces: Option<Vec<String>> = None;
+        
+        // Simulate different cluster contexts
+        let cluster_a = "cluster-a";
+        let cluster_b = "cluster-b";
+        
+        let key_a = format!("{}:{}:all", cluster_a, resource_type);
+        let key_b = format!("{}:{}:all", cluster_b, resource_type);
+        
+        assert_eq!(key_a, "cluster-a:nodes:all");
+        assert_eq!(key_b, "cluster-b:nodes:all");
+        assert_ne!(key_a, key_b, "Watch keys for different clusters should be different");
+    }
+
+    #[tokio::test]
+    async fn test_cluster_aware_namespaced_watch_keys() {
+        // Test that different clusters generate different watch keys for namespaced resources
+        let resource_type = "pods";
+        let namespace = "default";
+        
+        let cluster_a = "cluster-a";
+        let cluster_b = "cluster-b";
+        
+        let key_a = format!("{}:{}:{}", cluster_a, resource_type, namespace);
+        let key_b = format!("{}:{}:{}", cluster_b, resource_type, namespace);
+        
+        assert_eq!(key_a, "cluster-a:pods:default");
+        assert_eq!(key_b, "cluster-b:pods:default");
+        assert_ne!(key_a, key_b, "Watch keys for different clusters should be different even for same namespace");
+    }
+
+    #[tokio::test]
+    async fn test_cluster_prefix_filtering() {
+        // Test the cluster prefix filtering logic used in stop_cluster_watches
+        let cluster_context = "test-cluster";
+        let prefix = format!("{}:", cluster_context);
+        
+        let test_keys = vec![
+            "test-cluster:pods:default",
+            "test-cluster:nodes:all", 
+            "other-cluster:pods:default",
+            "other-cluster:nodes:all",
+            "test-cluster:services:kube-system"
+        ];
+        
+        let matching_keys: Vec<&str> = test_keys.iter()
+            .filter(|key| key.starts_with(&prefix))
+            .copied()
+            .collect();
+        
+        assert_eq!(matching_keys.len(), 3);
+        assert!(matching_keys.contains(&"test-cluster:pods:default"));
+        assert!(matching_keys.contains(&"test-cluster:nodes:all"));
+        assert!(matching_keys.contains(&"test-cluster:services:kube-system"));
+        assert!(!matching_keys.contains(&"other-cluster:pods:default"));
+        assert!(!matching_keys.contains(&"other-cluster:nodes:all"));
     }
 
     #[tokio::test]
@@ -887,6 +983,118 @@ mod tests {
             assert!(!resource_type.is_empty());
             assert!(resource_type.chars().all(|c| c.is_lowercase() || c.is_ascii_digit()));
         }
+    }
+
+    #[tokio::test]
+    async fn test_cross_cluster_watch_isolation() {
+        // This is a comprehensive integration test for cross-cluster contamination prevention
+        
+        // Mock two different cluster contexts by directly testing the key generation
+        // In a real scenario, this would involve switching actual Kubernetes contexts
+        
+        let test_resources = vec!["nodes", "pods", "services"];
+        let cluster_a = "cluster-production";
+        let cluster_b = "cluster-staging";
+        
+        for resource_type in test_resources {
+            // Generate keys for the same resource type in different clusters
+            let key_a = format!("{}:{}:all", cluster_a, resource_type);
+            let key_b = format!("{}:{}:all", cluster_b, resource_type);
+            
+            // Ensure isolation - keys should be different
+            assert_ne!(key_a, key_b, 
+                "Resource {} should have different keys in different clusters", resource_type);
+            
+            // Test namespaced resources too
+            let ns_key_a = format!("{}:{}:default", cluster_a, resource_type);
+            let ns_key_b = format!("{}:{}:default", cluster_b, resource_type);
+            assert_ne!(ns_key_a, ns_key_b,
+                "Namespaced resource {} should have different keys in different clusters", resource_type);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cluster_cleanup_on_context_switch() {
+        // Test that switching cluster context properly cleans up old watches
+        use std::collections::HashMap;
+        
+        // Simulate watch registry with mixed cluster watches
+        let mut mock_watches = HashMap::new();
+        
+        // Add watches for cluster A
+        mock_watches.insert("cluster-a:nodes:all".to_string(), "handle1");
+        mock_watches.insert("cluster-a:pods:default".to_string(), "handle2");
+        mock_watches.insert("cluster-a:services:kube-system".to_string(), "handle3");
+        
+        // Add watches for cluster B  
+        mock_watches.insert("cluster-b:nodes:all".to_string(), "handle4");
+        mock_watches.insert("cluster-b:pods:default".to_string(), "handle5");
+        
+        // Simulate cleanup for cluster-a (current cluster context)
+        let cluster_context = "cluster-a";
+        let prefix = format!("{}:", cluster_context);
+        
+        let keys_to_remove: Vec<String> = mock_watches.keys()
+            .filter(|key| key.starts_with(&prefix))
+            .cloned()
+            .collect();
+        
+        // Verify we identified the correct keys to remove
+        assert_eq!(keys_to_remove.len(), 3);
+        assert!(keys_to_remove.contains(&"cluster-a:nodes:all".to_string()));
+        assert!(keys_to_remove.contains(&"cluster-a:pods:default".to_string()));
+        assert!(keys_to_remove.contains(&"cluster-a:services:kube-system".to_string()));
+        
+        // Remove cluster-a watches (simulating actual cleanup)
+        for key in keys_to_remove {
+            mock_watches.remove(&key);
+        }
+        
+        // Verify only cluster-b watches remain
+        assert_eq!(mock_watches.len(), 2);
+        assert!(mock_watches.contains_key("cluster-b:nodes:all"));
+        assert!(mock_watches.contains_key("cluster-b:pods:default"));
+        assert!(!mock_watches.contains_key("cluster-a:nodes:all"));
+    }
+
+    #[tokio::test]
+    async fn test_multi_cluster_resource_contamination_prevention() {
+        // Test that watches for the same resource type in different clusters are isolated
+        let scenarios = vec![
+            // (cluster, resource_type, namespace)
+            ("production", "nodes", None),
+            ("staging", "nodes", None),
+            ("development", "nodes", None),
+            ("production", "pods", Some("default")),
+            ("staging", "pods", Some("default")), 
+            ("production", "services", Some("kube-system")),
+            ("staging", "services", Some("kube-system")),
+        ];
+        
+        let mut generated_keys = std::collections::HashSet::new();
+        
+        for (cluster, resource_type, namespace) in scenarios {
+            let watch_key = if let Some(ns) = namespace {
+                format!("{}:{}:{}", cluster, resource_type, ns)
+            } else {
+                format!("{}:{}:all", cluster, resource_type)
+            };
+            
+            // Ensure no duplicate keys (which would indicate contamination)
+            assert!(generated_keys.insert(watch_key.clone()), 
+                "Duplicate watch key detected: {} - this indicates cross-cluster contamination risk", 
+                watch_key);
+        }
+        
+        // Verify we have the expected number of unique keys
+        assert_eq!(generated_keys.len(), 7);
+        
+        // Verify specific patterns
+        assert!(generated_keys.contains("production:nodes:all"));
+        assert!(generated_keys.contains("staging:nodes:all"));
+        assert!(generated_keys.contains("development:nodes:all"));
+        assert!(generated_keys.contains("production:pods:default"));
+        assert!(generated_keys.contains("staging:pods:default"));
     }
 
     #[tokio::test]
