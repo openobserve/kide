@@ -1,9 +1,9 @@
-use std::process::Command;
-
 /// Check and report system file descriptor limits
 pub fn check_file_descriptor_limits() {
     #[cfg(unix)]
     {
+        use std::process::Command;
+        
         // Check current limits on Unix systems
         match Command::new("sh").arg("-c").arg("ulimit -n").output() {
             Ok(output) => {
