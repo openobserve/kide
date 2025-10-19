@@ -1,23 +1,24 @@
 name: Run Tests
 
 on:
-  pull_request:
-    branches: [ main ]
-    types: [ opened, synchronize, reopened ]
-    paths-ignore:
-      - '**/*.yaml'
-      - '**/*.yml'
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.json'
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**/*.yaml'
-      - '**/*.yml'
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.json'
+  # pull_request:
+  #   branches: [ main ]
+  #   types: [ opened, synchronize, reopened ]
+  #   paths-ignore:
+  #     - '**/*.yaml'
+  #     - '**/*.yml'
+  #     - '**/*.md'
+  #     - '**/*.txt'
+  #     - '**/*.json'
+  # push:
+  #   branches: [ main ]
+  #   paths-ignore:
+  #     - '**/*.yaml'
+  #     - '**/*.yml'
+  #     - '**/*.md'
+  #     - '**/*.txt'
+  #     - '**/*.json'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

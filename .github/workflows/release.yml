@@ -16,6 +16,7 @@ env:
 
 jobs:
   # Security scanning before building
+  # Note: Duplicates security.yml checks to gate releases
   security-check:
     runs-on: ubicloud-standard-8
     steps:
@@ -45,6 +46,12 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
