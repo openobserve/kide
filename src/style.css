@@ -3,23 +3,23 @@
 @theme {
   --default-transition-duration: 150ms;
   
-  /* Dark Theme Semantic Colors */
-  --color-background-primary: #000000;    /* Pure black for main backgrounds */
-  --color-background-secondary: #1f2937;  /* Gray-800 for secondary backgrounds */
-  --color-background-tertiary: #374151;   /* Gray-700 for tertiary backgrounds */
-  
-  --color-surface-primary: #000000;       /* Pure black for main surfaces */
-  --color-surface-secondary: #1f2937;     /* Gray-800 for elevated surfaces */
-  --color-surface-tertiary: #374151;      /* Gray-700 for higher elevation */
-  
-  --color-text-primary: #ffffff;          /* Pure white for primary text */
-  --color-text-secondary: #d1d5db;        /* Gray-300 for secondary text - slightly whiter */
-  --color-text-tertiary: #e5e7eb;         /* Gray-200 for tertiary text */
-  --color-text-muted: #d1d5db;            /* Gray-300 for muted text */
-  
-  --color-border-primary: #374151;        /* Gray-700 for primary borders */
-  --color-border-secondary: #4b5563;      /* Gray-600 for secondary borders */
-  --color-border-muted: #6b7280;          /* Gray-500 for subtle borders */
+  /* Dark Theme Semantic Colors - Slate Gray (VS Code style) */
+  --color-background-primary: #1e1e1e;    /* Charcoal background */
+  --color-background-secondary: #252526;  /* Slightly lighter charcoal */
+  --color-background-tertiary: #2d2d30;   /* Medium gray */
+
+  --color-surface-primary: #1e1e1e;       /* Charcoal for main surfaces */
+  --color-surface-secondary: #252526;     /* Slightly lighter for elevation */
+  --color-surface-tertiary: #2d2d30;      /* Medium gray for higher elevation */
+
+  --color-text-primary: #d4d4d4;          /* Light gray (VS Code text color) */
+  --color-text-secondary: #9ca3af;        /* Medium gray for secondary text */
+  --color-text-tertiary: #cccccc;         /* Lighter gray for tertiary text */
+  --color-text-muted: #6b7280;            /* Darker gray for muted text */
+
+  --color-border-primary: #3e3e42;        /* Subtle slate border */
+  --color-border-secondary: #4b5563;      /* Medium slate for emphasis */
+  --color-border-muted: #6b7280;          /* Lighter slate for visible borders */
   
   /* Interactive & Accent Colors */
   --color-accent-primary: #3b82f6;        /* Blue-500 for primary interactive elements */
