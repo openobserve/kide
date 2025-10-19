@@ -63,7 +63,6 @@ pub struct BackgroundLoadTask {
 /// Global serial loading queue to prevent thundering herd
 pub struct SerialLoadingQueue {
     sender: mpsc::UnboundedSender<BackgroundLoadTask>,
-    worker_handle: Option<JoinHandle<()>>,
 }
 
 static LOADING_QUEUE: Lazy<Mutex<Option<SerialLoadingQueue>>> = Lazy::new(|| Mutex::new(None));
@@ -71,15 +70,12 @@ static LOADING_QUEUE: Lazy<Mutex<Option<SerialLoadingQueue>>> = Lazy::new(|| Mut
 impl SerialLoadingQueue {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
-        
-        let worker_handle = tokio::spawn(async move {
+
+        tokio::spawn(async move {
             Self::process_queue(receiver).await;
         });
 
-        Self {
-            sender,
-            worker_handle: Some(worker_handle),
-        }
+        Self { sender }
     }
 
     pub fn enqueue(&self, task: BackgroundLoadTask) -> Result<(), String> {
