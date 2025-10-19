@@ -160,7 +160,7 @@
           :getQoSClass="getQoSClass"
           :getStatusClass="getStatusClass"
           :getStatusText="getStatusText"
-          :getAge="getAge"
+          :getAge="getAgeReactive"
           @toggleSelectAll="toggleSelectAll"
           @setHoveredRow="setHoveredRow"
           @clearHoveredRow="forceClearHoveredRow"
@@ -243,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 // Import composables
@@ -328,6 +328,17 @@ const hoveredRowId = ref<string | null>(null)
 const hoverTimeout = ref<NodeJS.Timeout | null>(null)
 const maxHoverTimeout = ref<NodeJS.Timeout | null>(null)
 const isMouseOverTable = ref(false)
+
+// Auto-update age column every 10 seconds
+const currentTime = ref(Date.now())
+let ageUpdateInterval: NodeJS.Timeout | null = null
+
+// Reactive age calculation that updates with currentTime
+const getAgeReactive = computed(() => {
+  // Access currentTime to make this reactive
+  currentTime.value
+  return (timestamp?: string) => getAge(timestamp)
+})
 
 // Note: Sorting state now handled by useResourceSorting composable
 
@@ -557,6 +568,20 @@ async function handleTriggerCronJob(item: K8sListItem): Promise<void> {
 }
 
 
+// Start age update interval when component mounts
+onMounted(() => {
+  ageUpdateInterval = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 10000) // Update every 10 seconds
+})
+
+// Cleanup interval when component unmounts
+onUnmounted(() => {
+  if (ageUpdateInterval) {
+    clearInterval(ageUpdateInterval)
+    ageUpdateInterval = null
+  }
+})
 
 // Note: Timeout cleanup is handled automatically by useTimeouts composable
 </script>
