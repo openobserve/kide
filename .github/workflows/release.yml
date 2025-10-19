@@ -1,0 +1,318 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Security scanning before building
+  security-check:
+    runs-on: ubicloud-standard-8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=moderate
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Rust dependencies
+        run: cd src-tauri && cargo audit
+
+  release-macos:
+    needs: security-check
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import Apple Certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          security import certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Allow codesign to access keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Clean up certificate file
+          rm certificate.p12
+
+          echo "✅ Certificate imported successfully"
+
+      - name: Build Tauri app (Universal Binary)
+        run: npm run tauri build -- --target universal-apple-darwin
+
+      - name: Notarize macOS app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          # Find the DMG file
+          DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
+
+          if [ -z "$DMG_PATH" ]; then
+            echo "❌ Error: DMG file not found"
+            exit 1
+          fi
+
+          echo "📦 Found DMG: $DMG_PATH"
+          echo "🔐 Submitting for notarization..."
+
+          # Submit for notarization
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD" \
+            --wait \
+            --timeout 30m
+
+          echo "✅ Notarization complete!"
+
+          # Staple the notarization ticket
+          echo "📎 Stapling notarization ticket..."
+          xcrun stapler staple "$DMG_PATH"
+
+          echo "✅ Stapling complete!"
+
+          # Verify notarization
+          echo "🔍 Verifying notarization..."
+          spctl -a -vvv -t install "$DMG_PATH"
+
+      - name: Generate checksums
+        run: |
+          cd src-tauri/target/universal-apple-darwin/release/bundle/dmg
+          shasum -a 256 *.dmg > checksums-macos.txt
+          cat checksums-macos.txt
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/checksums-macos.txt
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  release-linux:
+    needs: security-check
+    runs-on: ubicloud-standard-8
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Generate checksums
+        run: |
+          cd src-tauri/target/release/bundle
+          find . -type f \( -name "*.deb" -o -name "*.AppImage" \) -exec shasum -a 256 {} \; > checksums-linux.txt
+          cat checksums-linux.txt
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/checksums-linux.txt
+
+  release-windows:
+    needs: security-check
+    runs-on: windows-2022-16-cores
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          cd src-tauri/target/release/bundle
+          Get-ChildItem -Recurse -Include *.msi,*.exe | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)"
+          } | Out-File -FilePath checksums-windows.txt
+          Get-Content checksums-windows.txt
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/checksums-windows.txt
+
+  create-release:
+    needs: [release-macos, release-linux, release-windows]
+    runs-on: ubicloud-standard-8
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/macos-dmg/*.dmg
+            artifacts/macos-dmg/checksums-macos.txt
+            artifacts/linux-packages/*.deb
+            artifacts/linux-packages/*.AppImage
+            artifacts/linux-packages/checksums-linux.txt
+            artifacts/windows-installers/*.msi
+            artifacts/windows-installers/*.exe
+            artifacts/windows-installers/checksums-windows.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### macOS
+            1. Download `Kide_*.dmg`
+            2. Open the DMG and drag Kide to Applications
+            3. Right-click Kide and select "Open" on first launch
+            4. Verify: `codesign -dv --verbose=4 /Applications/Kide.app`
+
+            ### Linux
+            - **Debian/Ubuntu**: Download and install `.deb` file
+            - **Other distros**: Download `.AppImage` file and make executable
+
+            ### Windows
+            - Download and run `.msi` installer
+
+            ## Verification
+
+            All releases include SHA-256 checksums. Verify your download:
+
+            ```bash
+            # macOS/Linux
+            shasum -a 256 -c checksums-*.txt
+
+            # Windows (PowerShell)
+            Get-FileHash Kide_*.msi -Algorithm SHA256
+            ```
+
+            ## Security
+
+            - macOS app is code-signed and notarized by Apple
+            - All builds are reproducible from source
+            - See [SECURITY.md](https://github.com/${{ github.repository }}/blob/main/SECURITY.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,167 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubicloud-standard-8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubicloud-standard-8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Rust dependencies
+        run: cd src-tauri && cargo audit
+        continue-on-error: true
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubicloud-standard-8
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'typescript']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  license-check:
+    name: License Compliance
+    runs-on: ubicloud-standard-8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: npx license-checker --summary
+        continue-on-error: true
+
+  gitignore-check:
+    name: Verify .gitignore
+    runs-on: ubicloud-standard-8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for sensitive files
+        run: |
+          echo "Checking for potentially sensitive files..."
+
+          # Check if any sensitive files are tracked
+          SENSITIVE_FILES=$(git ls-files | grep -E '\.(p12|cer|key|pem|private)$' || true)
+
+          if [ ! -z "$SENSITIVE_FILES" ]; then
+            echo "❌ ERROR: Sensitive files found in repository:"
+            echo "$SENSITIVE_FILES"
+            exit 1
+          fi
+
+          echo "✅ No sensitive files found in repository"
+
+      - name: Verify .gitignore exists
+        run: |
+          if [ ! -f .gitignore ]; then
+            echo "❌ ERROR: .gitignore file not found"
+            exit 1
+          fi
+
+          echo "✅ .gitignore file exists"
+
+      - name: Check .gitignore patterns
+        run: |
+          REQUIRED_PATTERNS=(
+            "*.p12"
+            "*.cer"
+            "*.key"
+            ".env"
+            "*.private"
+          )
+
+          MISSING_PATTERNS=()
+
+          for pattern in "${REQUIRED_PATTERNS[@]}"; do
+            if ! grep -q "$pattern" .gitignore; then
+              MISSING_PATTERNS+=("$pattern")
+            fi
+          done
+
+          if [ ${#MISSING_PATTERNS[@]} -gt 0 ]; then
+            echo "⚠️ WARNING: Following patterns missing in .gitignore:"
+            printf '%s\n' "${MISSING_PATTERNS[@]}"
+          else
+            echo "✅ All required .gitignore patterns present"
+          fi

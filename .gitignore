@@ -25,3 +25,58 @@ dist-ssr
 
 # Tauri
 src-tauri/target/
+src-tauri/gen/
+
+# ==========================================
+# SECURITY - CRITICAL FOR PUBLIC REPOSITORY
+# ==========================================
+
+# Apple Certificates & Keys (DO NOT COMMIT!)
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+certificates/
+*.key
+*.keychain
+*.keystore
+
+# Tauri Private Keys (DO NOT COMMIT!)
+*.private.key
+*.private
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+.env.*.local
+.env.development
+.env.test
+
+# Build artifacts that may contain embedded secrets
+*.dmg
+*.app
+*.pkg
+*.msi
+*.exe
+*.deb
+*.AppImage
+*.rpm
+
+# Backup files
+*.bak
+*.backup
+*.old
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Configuration files that might contain secrets
+config.local.*
+secrets.*
+credentials.*
