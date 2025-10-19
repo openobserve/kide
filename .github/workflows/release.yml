@@ -107,6 +107,8 @@ jobs:
           echo "✅ Certificate imported successfully"
 
       - name: Build Tauri app (Universal Binary)
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: npm run tauri build -- --target universal-apple-darwin
 
       - name: Notarize macOS app
