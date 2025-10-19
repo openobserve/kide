@@ -24,7 +24,7 @@ env:
 
 jobs:
   frontend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-8
     
     steps:
     - name: Checkout repository
@@ -46,7 +46,7 @@ jobs:
       run: npm test
 
   backend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-8
     
     steps:
     - name: Checkout repository
