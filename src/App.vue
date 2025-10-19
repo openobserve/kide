@@ -41,6 +41,7 @@
         :error="resourceStore.error"
         :watchError="resourceStore.watchError"
         :hasInitialData="resourceStore.hasInitialData"
+        :isLoadingInBackground="resourceStore.isLoadingInBackground"
         @namespace-change="handleNamespaceChange"
         @resource-deleted="handleResourceDeleted"
         @retry="handleRetry"
@@ -48,6 +49,9 @@
       />
       
     </div>
+    
+    <!-- Loading Progress Bar -->
+    <LoadingProgressBar />
   </div>
 </template>
 
@@ -58,6 +62,7 @@ import TitleBar from './components/TitleBar.vue'
 import ResourceNavigation from './components/ResourceNavigation.vue'
 import MainContent from './components/MainContent.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
+import LoadingProgressBar from './components/LoadingProgressBar.vue'
 import { useClusterStore } from './stores/cluster'
 import { useResourceStore } from './stores/resources'
 import type { WatchEvent } from '@/types'
@@ -67,6 +72,7 @@ const clusterStore = useClusterStore()
 const resourceStore = useResourceStore()
 
 let unlisten: UnlistenFn | null = null
+let unlistenBackgroundData: UnlistenFn | null = null
 
 onMounted(async () => {
   try {
@@ -78,7 +84,22 @@ onMounted(async () => {
     
     // Set up event listener for watch events
     unlisten = await listen<WatchEvent>('k8s-watch-event', (event) => {
+      console.log('🎯 RAW watch event received in App.vue:', event.payload)
       resourceStore.processWatchEvent(event.payload)
+    })
+    
+    // Set up event listener for background data loading completion
+    unlistenBackgroundData = await listen<string>('background-data-loaded', (event) => {
+      const resourceType = event.payload
+      console.log(`📦 Background data loaded for ${resourceType}`)
+      
+      // Handle background loading completion and refresh if current resource
+      resourceStore.handleBackgroundDataLoaded(resourceType)
+      
+      // If this resource type is currently selected, refresh the resource list
+      if (resourceStore.selectedResource?.name.toLowerCase() === resourceType.toLowerCase()) {
+        resourceStore.refreshAfterResourceDeleted(clusterStore.selectedNamespaces)
+      }
     })
   } catch (error) {
     console.error('Failed to initialize application:', error)
@@ -88,6 +109,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unlisten) {
     unlisten()
+  }
+  if (unlistenBackgroundData) {
+    unlistenBackgroundData()
   }
   resourceStore.cleanup()
 })

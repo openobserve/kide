@@ -189,25 +189,29 @@ pub struct K8sListItem {
 /// These events represent the different types of changes that can occur to
 /// Kubernetes objects, allowing clients to maintain up-to-date views of cluster state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum WatchEvent {
     /// A new resource was created or discovered
-    Added { 
+    Added {
         item: K8sListItem,
+        #[serde(rename = "clusterContext")]
         cluster_context: String,
     },
     /// An existing resource was updated
-    Modified { 
+    Modified {
         item: K8sListItem,
+        #[serde(rename = "clusterContext")]
         cluster_context: String,
     },
     /// A resource was deleted
-    Deleted { 
+    Deleted {
         item: K8sListItem,
+        #[serde(rename = "clusterContext")]
         cluster_context: String,
     },
     /// Initial watch synchronization is complete (no more items)
     InitialSyncComplete {
+        #[serde(rename = "clusterContext")]
         cluster_context: String,
     },
 }

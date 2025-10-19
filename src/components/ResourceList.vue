@@ -18,10 +18,15 @@
     <!-- Header -->
     <div class="px-4 py-2 border-b border-border-primary">
       <div class="flex items-center justify-between gap-4">
-        <div class="flex-shrink-0">
+        <div class="flex-shrink-0 flex items-center gap-3">
           <h1 class="text-lg font-semibold text-text-primary">
             {{ resource?.name || 'Unknown Resource' }}
           </h1>
+          <!-- Small loading indicator in header -->
+          <div v-if="isLoadingInBackground" class="flex items-center gap-2">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span class="text-sm text-text-secondary">Loading...</span>
+          </div>
         </div>
         <div class="flex items-center space-x-4 flex-1 justify-end">
           <!-- Namespace multi-select for namespaced resources -->
@@ -89,6 +94,20 @@
         @retry="handleRetry"
       />
       
+      <!-- Background Loading State -->
+      <div v-else-if="isLoadingInBackground && items.length === 0" class="flex items-center justify-center h-full">
+        <div class="text-center">
+          <div class="text-text-muted mb-4">
+            <!-- Loading spinner -->
+            <div class="relative w-16 h-16 mx-auto">
+              <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+          <h3 class="text-lg font-medium text-text-primary mb-2">Loading {{ resource?.name || 'Resources' }}...</h3>
+          <p class="text-text-secondary">Fetching {{ resource?.name.toLowerCase() || 'resources' }} from the cluster</p>
+        </div>
+      </div>
+
       <!-- Empty State (only show when we have received initial data and have zero results) -->
       <div v-else-if="hasInitialData && items.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center">
@@ -261,6 +280,7 @@ interface Props {
   resource: K8sResource | null
   items: K8sListItem[]
   loading?: boolean
+  isLoadingInBackground?: boolean
   namespaces?: string[]
   selectedNamespaces?: string[]
   error?: string | null

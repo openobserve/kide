@@ -91,7 +91,6 @@ macro_rules! k8s_command {
 }
 
 /// Specific command implementations for common operations.
-
 /// Command to get Kubernetes namespaces.
 pub struct GetNamespacesCommand;
 

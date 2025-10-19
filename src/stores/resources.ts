@@ -12,6 +12,7 @@ export const useResourceStore = defineStore('resources', (): {
   resourceItems: import('vue').Ref<K8sListItem[]>
   loading: import('vue').Ref<boolean>
   isChangingNamespaces: import('vue').Ref<boolean>
+  isLoadingInBackground: import('vue').Ref<boolean>
   error: import('vue').Ref<string | null>
   watchError: import('vue').Ref<string | null>
   hasInitialData: import('vue').Ref<boolean>
@@ -20,6 +21,7 @@ export const useResourceStore = defineStore('resources', (): {
   changeNamespaces: (newNamespaces: string[]) => Promise<void>
   processWatchEvent: (event: WatchEvent) => void
   refreshAfterResourceDeleted: (namespaces: string[]) => Promise<void>
+  handleBackgroundDataLoaded: (resourceType: string) => void
   resetForClusterChange: () => Promise<void>
   cleanup: () => void
 } => {
@@ -32,6 +34,7 @@ export const useResourceStore = defineStore('resources', (): {
   const resourceItems = ref<K8sListItem[]>([])
   const loading = ref(false)
   const isChangingNamespaces = ref(false)
+  const isLoadingInBackground = ref(false) // Track if background data loading is in progress
   const error = ref<string | null>(null)
   const watchError = ref<string | null>(null)
   const hasInitialData = ref(false) // Track if we've received initial data (even if empty)
@@ -40,6 +43,12 @@ export const useResourceStore = defineStore('resources', (): {
   let eventBatch: WatchEvent[] = []
   let eventBatchTimeout: NodeJS.Timeout | null = null
   let namespaceChangeTimeout: NodeJS.Timeout | null = null
+
+  // Helper function to check if a resource type has background loading priority
+  function hasBackgroundLoading(resourceType: string): boolean {
+    const criticalResources = ['pods', 'services', 'deployments']
+    return !criticalResources.includes(resourceType.toLowerCase())
+  }
 
 
   // Actions
@@ -58,6 +67,7 @@ export const useResourceStore = defineStore('resources', (): {
     error.value = null
     watchError.value = null
     hasInitialData.value = false
+    isLoadingInBackground.value = false
     
     // Unsubscribe from previous resource if any
     if (selectedResource.value) {
@@ -77,9 +87,11 @@ export const useResourceStore = defineStore('resources', (): {
 
     try {
       // Subscribe to new resource and get immediate cached data
+      // Use immediate_fetch=true for user-initiated resource selection
       const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
         resourceType: resource.name.toLowerCase(),
-        namespace: resource.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null
+        namespace: resource.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null,
+        immediate_fetch: true
       })
       
       // Set the cached data immediately (no more delay!)
@@ -89,10 +101,28 @@ export const useResourceStore = defineStore('resources', (): {
       if (cachedData && cachedData.length > 0) {
         hasInitialData.value = true
       } else {
+        // Check if this resource type has background loading
+        const requiresBackgroundLoading = hasBackgroundLoading(resource.name)
+        
+        if (requiresBackgroundLoading) {
+          // Start background loading indicator for non-critical resources
+          isLoadingInBackground.value = true
+          console.log(`🔄 Starting background loading for ${resource.name}`)
+          
+          // Fallback timeout to ensure loading indicator doesn't get stuck
+          createTimeout(() => {
+            if (isLoadingInBackground.value) {
+              console.log(`⏰ Background loading timeout for ${resource.name}`)
+              isLoadingInBackground.value = false
+            }
+          }, 15000) // 15 second fallback timeout
+        }
+        
         // For empty or new subscriptions, wait for watch events or timeout
         createTimeout(() => {
           hasInitialData.value = true
           loading.value = false // Stop loading after timeout
+          // Keep background loading until we actually get data
         }, 2000) // 2 second timeout to allow initial watch events
       }
       
@@ -138,7 +168,8 @@ export const useResourceStore = defineStore('resources', (): {
     try {
       const subscribeParams = {
         resourceType: selectedResource.value.name.toLowerCase(),
-        namespace: newNamespaces.length === 1 ? newNamespaces[0] : null
+        namespace: newNamespaces.length === 1 ? newNamespaces[0] : null,
+        immediate_fetch: true
       }
       
       console.log(`🔄 Changing namespaces for ${selectedResource.value.name} to:`, newNamespaces, 'Subscribe params:', subscribeParams)
@@ -185,34 +216,47 @@ export const useResourceStore = defineStore('resources', (): {
   function processWatchEvent(event: WatchEvent): void {
     // Only process events for the currently selected resource
     if (!selectedResource.value) {
+      console.log('⏭️ Skipping watch event - no resource selected')
       return
     }
-    
+
     // Get current cluster context to filter events
     const clusterStore = useClusterStore()
     const currentCluster = clusterStore.currentContextName()
-    
+
     // Handle InitialSyncComplete specially - always process this
     if ('InitialSyncComplete' in event) {
       // Only process if it's from the current cluster
       if (event.InitialSyncComplete.clusterContext === currentCluster) {
+        console.log('✅ Initial sync complete for', currentCluster)
         hasInitialData.value = true
         loading.value = false
         isChangingNamespaces.value = false
       }
       return
     }
-    
+
     // Filter events by cluster context to prevent cross-cluster contamination
     let eventClusterContext: string | undefined
+    let eventType: string = 'Unknown'
+    let itemName: string = ''
+
     if ('Added' in event) {
       eventClusterContext = event.Added.clusterContext
+      eventType = 'Added'
+      itemName = event.Added.item.metadata?.name || 'unknown'
     } else if ('Modified' in event) {
       eventClusterContext = event.Modified.clusterContext
+      eventType = 'Modified'
+      itemName = event.Modified.item.metadata?.name || 'unknown'
     } else if ('Deleted' in event) {
       eventClusterContext = event.Deleted.clusterContext
+      eventType = 'Deleted'
+      itemName = event.Deleted.item.metadata?.name || 'unknown'
     }
-    
+
+    console.log(`📨 Received ${eventType} event for ${itemName} from cluster ${eventClusterContext}`)
+
     // Skip events from other clusters
     if (eventClusterContext !== currentCluster) {
       console.log(`🚫 Skipping event from different cluster: ${eventClusterContext} (current: ${currentCluster})`)
@@ -226,6 +270,8 @@ export const useResourceStore = defineStore('resources', (): {
     hasInitialData.value = true
     loading.value = false
     isChangingNamespaces.value = false
+    // Stop background loading since we're getting live data
+    isLoadingInBackground.value = false
     
     // Add event to batch
     eventBatch.push(event)
@@ -246,16 +292,19 @@ export const useResourceStore = defineStore('resources', (): {
 
   function processBatchedEvents(): void {
     if (eventBatch.length === 0) return
-    
+
+    console.log(`🔄 Processing ${eventBatch.length} batched events`)
+
     // Get selected namespaces from cluster store
     const clusterStore = useClusterStore()
     const selectedNamespaces = clusterStore.selectedNamespaces
-    
+
     // If no namespaces are selected, don't process events
     if (selectedResource.value?.namespaced && selectedNamespaces.length === 0) {
+      console.log('⏭️ Skipping event processing - no namespaces selected')
       return
     }
-    
+
     const itemsMap = new Map<string, K8sListItem>()
     
     // Initialize map with current items (only include items that match selected namespaces)
@@ -317,16 +366,22 @@ export const useResourceStore = defineStore('resources', (): {
       
       if (addedItem && addedItem.metadata?.uid) {
         if (shouldIncludeItem(addedItem)) {
+          console.log(`➕ Adding ${addedItem.kind} ${addedItem.metadata.name}`)
           itemsMap.set(addedItem.metadata.uid, addedItem as K8sListItem)
+        } else {
+          console.log(`⏭️ Skipping Added event - shouldIncludeItem=false for ${addedItem.metadata.name}`)
         }
       } else if (modifiedItem && modifiedItem.metadata?.uid) {
         if (shouldIncludeItem(modifiedItem)) {
+          console.log(`✏️ Modifying ${modifiedItem.kind} ${modifiedItem.metadata.name}`)
           itemsMap.set(modifiedItem.metadata.uid, modifiedItem as K8sListItem)
         } else {
           // Remove item if it's no longer in selected namespaces
+          console.log(`➖ Removing ${modifiedItem.kind} ${modifiedItem.metadata.name} (no longer matches filters)`)
           itemsMap.delete(modifiedItem.metadata.uid)
         }
       } else if (deletedItem && deletedItem.metadata?.uid) {
+        console.log(`🗑️ Deleting ${deletedItem.kind} ${deletedItem.metadata?.name} (UID: ${deletedItem.metadata.uid})`)
         itemsMap.delete(deletedItem.metadata.uid)
       }
     }
@@ -348,7 +403,8 @@ export const useResourceStore = defineStore('resources', (): {
       // Re-subscribe to get fresh data - the shared cache will handle this efficiently
       const cachedData = await invoke<K8sListItem[]>('subscribe_to_resources', {
         resourceType: selectedResource.value.name.toLowerCase(),
-        namespace: selectedResource.value.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null
+        namespace: selectedResource.value.namespaced ? (namespaces.length === 1 ? namespaces[0] : null) : null,
+        immediate_fetch: true
       })
       
       // Update resource items with fresh data
@@ -356,6 +412,14 @@ export const useResourceStore = defineStore('resources', (): {
     } catch (error) {
       console.error('Failed to refresh resource list after deletion:', error)
       throw error
+    }
+  }
+
+  function handleBackgroundDataLoaded(resourceType: string): void {
+    // If this resource type is currently selected, stop background loading indicator
+    if (selectedResource.value?.name.toLowerCase() === resourceType.toLowerCase()) {
+      isLoadingInBackground.value = false
+      console.log(`✅ Background loading completed for ${resourceType}`)
     }
   }
 
@@ -377,6 +441,7 @@ export const useResourceStore = defineStore('resources', (): {
     resourceItems.value = []
     loading.value = false
     isChangingNamespaces.value = false
+    isLoadingInBackground.value = false
     error.value = null
     watchError.value = null
     hasInitialData.value = false
@@ -411,6 +476,7 @@ export const useResourceStore = defineStore('resources', (): {
     resourceItems,
     loading,
     isChangingNamespaces,
+    isLoadingInBackground,
     error,
     watchError,
     hasInitialData,
@@ -421,6 +487,7 @@ export const useResourceStore = defineStore('resources', (): {
     changeNamespaces,
     processWatchEvent,
     refreshAfterResourceDeleted,
+    handleBackgroundDataLoaded,
     resetForClusterChange,
     cleanup,
   }

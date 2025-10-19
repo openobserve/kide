@@ -224,6 +224,7 @@ pub async fn subscribe_to_resources(
     state: State<'_, AppState>,
     resource_type: String,
     namespace: Option<String>,
+    immediate_fetch: Option<bool>,
 ) -> Result<Vec<crate::k8s::K8sListItem>, String> {
     use crate::k8s::{WatchScope, K8sClient};
     
@@ -237,7 +238,8 @@ pub async fn subscribe_to_resources(
         let scope = WatchScope::new(cluster_context)
             .with_namespace(namespace);
         
-        cache.subscribe(app_handle, resource_type, scope)
+        let immediate = immediate_fetch.unwrap_or(false);
+        cache.subscribe(app_handle, resource_type, scope, immediate)
             .await
             .map_err(|e| e.to_string())
     } else {

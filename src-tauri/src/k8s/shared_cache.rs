@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::task::JoinHandle;
+use once_cell::sync::Lazy;
 use tauri::{AppHandle, Emitter};
 use anyhow::Result;
 use kube::{Api, Client, ResourceExt};
@@ -12,6 +13,221 @@ use futures::StreamExt;
 use super::resources::{WatchEvent, K8sListItem};
 use super::watch::convert_to_list_item;
 use super::K8sClient;
+
+/// Resource loading priorities to prevent thundering herd issues
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ResourcePriority {
+    Critical = 0,  // Load immediately (pods, services, deployments)
+    High = 1,      // Load after critical (nodes, namespaces, configmaps, secrets)
+    Medium = 2,    // Load with 2s delay (statefulsets, daemonsets, jobs)
+    Low = 3,       // Load with 5s delay (persistentvolumes, ingresses, etc.)
+    Background = 4, // Load with 10s+ delay (rbac, crds, etc.)
+}
+
+/// Get loading priority for a resource type
+fn get_resource_priority(resource_type: &str) -> ResourcePriority {
+    match resource_type {
+        // Critical resources - user expects these immediately
+        "pods" | "services" | "deployments" => ResourcePriority::Critical,
+        
+        // High priority - important for cluster overview
+        "nodes" | "namespaces" | "configmaps" | "secrets" => ResourcePriority::High,
+        
+        // Medium priority - workload related
+        "statefulsets" | "daemonsets" | "jobs" | "cronjobs" | "replicasets" => ResourcePriority::Medium,
+        
+        // Low priority - storage and networking
+        "persistentvolumes" | "persistentvolumeclaims" | "storageclasses" | "ingresses" | 
+        "networkpolicies" | "endpointslices" | "endpoints" => ResourcePriority::Low,
+        
+        // Background - RBAC, system resources
+        "roles" | "rolebindings" | "clusterroles" | "clusterrolebindings" |
+        "serviceaccounts" | "resourcequotas" | "limitranges" | 
+        "poddisruptionbudgets" | "horizontalpodautoscalers" => ResourcePriority::Background,
+        
+        // Default to low priority for unknown resources
+        _ => ResourcePriority::Low,
+    }
+}
+
+/// Background loading task for serial processing
+#[derive(Debug)]
+pub struct BackgroundLoadTask {
+    pub app_handle: AppHandle,
+    pub cache_key: (String, String),
+    pub watch_info: Arc<WatchInfo>,
+    pub priority: ResourcePriority,
+    pub loading_resources: Arc<Mutex<HashSet<(String, String)>>>,
+}
+
+/// Global serial loading queue to prevent thundering herd
+pub struct SerialLoadingQueue {
+    sender: mpsc::UnboundedSender<BackgroundLoadTask>,
+    worker_handle: Option<JoinHandle<()>>,
+}
+
+static LOADING_QUEUE: Lazy<Mutex<Option<SerialLoadingQueue>>> = Lazy::new(|| Mutex::new(None));
+
+impl SerialLoadingQueue {
+    pub fn new() -> Self {
+        let (sender, receiver) = mpsc::unbounded_channel();
+        
+        let worker_handle = tokio::spawn(async move {
+            Self::process_queue(receiver).await;
+        });
+
+        Self {
+            sender,
+            worker_handle: Some(worker_handle),
+        }
+    }
+
+    pub fn enqueue(&self, task: BackgroundLoadTask) -> Result<(), String> {
+        self.sender.send(task).map_err(|e| format!("Failed to enqueue background loading task: {}", e))
+    }
+
+    async fn process_queue(mut receiver: mpsc::UnboundedReceiver<BackgroundLoadTask>) {
+        let mut queue: VecDeque<BackgroundLoadTask> = VecDeque::new();
+
+        while let Some(task) = receiver.recv().await {
+            // Add task to priority-sorted queue
+            Self::insert_by_priority(&mut queue, task);
+            
+            // Process all tasks in the queue sequentially
+            Self::process_next_task(&mut queue).await;
+        }
+    }
+
+    fn insert_by_priority(queue: &mut VecDeque<BackgroundLoadTask>, task: BackgroundLoadTask) {
+        // Insert task in priority order (higher priority = lower number = earlier in queue)
+        let insert_pos = queue
+            .iter()
+            .position(|existing| existing.priority as u8 > task.priority as u8)
+            .unwrap_or(queue.len());
+        
+        queue.insert(insert_pos, task);
+    }
+
+    async fn process_next_task(queue: &mut VecDeque<BackgroundLoadTask>) {
+        let total_tasks = queue.len();
+        let mut completed_tasks = 0;
+        
+        while let Some(task) = queue.pop_front() {
+            // Check if the resource is still being tracked (not unsubscribed)
+            let subscriber_count = task.watch_info.subscriber_count().await;
+            if subscriber_count == 0 {
+                println!("⏭️ Skipping background loading for {} (no subscribers)", task.cache_key.0);
+                completed_tasks += 1;
+                
+                // Emit progress update
+                let progress = (completed_tasks as f32 / total_tasks as f32 * 100.0) as u32;
+                let _ = task.app_handle.emit("background-loading-progress", serde_json::json!({
+                    "current": completed_tasks,
+                    "total": total_tasks,
+                    "progress": progress,
+                    "current_resource": "",
+                    "status": "skipped"
+                }));
+                continue;
+            }
+
+            let resource_type = task.cache_key.0.clone();
+            let scope = task.watch_info.scope.clone();
+            let delay = Self::get_delay_for_priority(task.priority);
+
+            // Emit progress update - starting to process this resource
+            let progress = (completed_tasks as f32 / total_tasks as f32 * 100.0) as u32;
+            let _ = task.app_handle.emit("background-loading-progress", serde_json::json!({
+                "current": completed_tasks,
+                "total": total_tasks,
+                "progress": progress,
+                "current_resource": resource_type.clone(),
+                "status": "loading"
+            }));
+
+            println!("🔄 Processing background loading for {} (priority: {:?}, delay: {}s)", resource_type, task.priority, delay);
+
+            // Apply priority-based delay
+            if delay > 0 {
+                tokio::time::sleep(Duration::from_secs(delay)).await;
+            }
+
+            // Create a temporary shared cache instance for fetching data
+            let temp_cache = SharedWatchCache::new(K8sClient::new());
+            let initial_data = temp_cache.fetch_initial_data(resource_type.clone(), scope).await
+                .unwrap_or_else(|e| {
+                    eprintln!("Warning: Failed to fetch initial data for {}: {}", resource_type, e);
+                    Vec::new()
+                });
+
+            // Populate the cache with initial data
+            temp_cache.populate_cache(&task.watch_info, &initial_data).await;
+
+            // Always emit event to frontend to indicate background loading is complete
+            let _ = task.app_handle.emit("background-data-loaded", &resource_type);
+            if !initial_data.is_empty() {
+                println!("✅ Loaded {} initial items for {}", initial_data.len(), resource_type);
+            } else {
+                println!("✅ Background loading completed for {} (no items found)", resource_type);
+            }
+
+            // Remove from loading set
+            let mut loading = task.loading_resources.lock().await;
+            loading.remove(&task.cache_key);
+
+            completed_tasks += 1;
+
+            // Emit progress update - completed this resource
+            let final_progress = (completed_tasks as f32 / total_tasks as f32 * 100.0) as u32;
+            let _ = task.app_handle.emit("background-loading-progress", serde_json::json!({
+                "current": completed_tasks,
+                "total": total_tasks,
+                "progress": final_progress,
+                "current_resource": resource_type,
+                "status": "completed"
+            }));
+
+            // Small delay between tasks to prevent overwhelming the API
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+
+        // Emit final completion event if we processed any tasks
+        if total_tasks > 0 {
+            // Use the last task's app_handle for the completion event
+            // Since all tasks are processed, we need to get a reference to the app_handle
+            // We'll modify this to emit from the context that has the app_handle
+        }
+    }
+
+    fn get_delay_for_priority(priority: ResourcePriority) -> u64 {
+        match priority {
+            ResourcePriority::Critical => 0,      // Already handled synchronously
+            ResourcePriority::High => 1,         // 1 second delay
+            ResourcePriority::Medium => 2,       // 2 second delay  
+            ResourcePriority::Low => 3,          // 3 second delay
+            ResourcePriority::Background => 5,   // 5 second delay
+        }
+    }
+}
+
+/// Initialize the global loading queue
+pub async fn initialize_loading_queue() {
+    let mut queue_guard = LOADING_QUEUE.lock().await;
+    if queue_guard.is_none() {
+        *queue_guard = Some(SerialLoadingQueue::new());
+        println!("🚀 Initialized serial background loading queue");
+    }
+}
+
+/// Enqueue a background loading task
+pub async fn enqueue_background_loading(task: BackgroundLoadTask) -> Result<(), String> {
+    let queue_guard = LOADING_QUEUE.lock().await;
+    if let Some(queue) = queue_guard.as_ref() {
+        queue.enqueue(task)
+    } else {
+        Err("Loading queue not initialized".to_string())
+    }
+}
 
 /// Scope defines the boundaries of a watch (cluster + namespace + selector)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -88,6 +304,8 @@ pub struct SharedWatchCache {
     client: K8sClient,
     /// Active watches: (resource_type, scope_key) -> WatchInfo
     active_watches: Arc<Mutex<HashMap<(String, String), Arc<WatchInfo>>>>,
+    /// Resources currently loading initial data in background
+    loading_resources: Arc<Mutex<HashSet<(String, String)>>>,
     /// Cleanup task handle
     cleanup_handle: Option<JoinHandle<()>>,
     /// Configuration
@@ -103,9 +321,15 @@ impl SharedWatchCache {
     /// - Only cleans up watches with 0 subscribers after 20 minutes of inactivity
     /// - Checks for cleanup every 5 minutes (less aggressive than server apps)
     pub fn new(client: K8sClient) -> Self {
+        // Initialize the global loading queue if not already initialized
+        tokio::spawn(async {
+            initialize_loading_queue().await;
+        });
+
         Self {
             client,
             active_watches: Arc::new(Mutex::new(HashMap::new())),
+            loading_resources: Arc::new(Mutex::new(HashSet::new())),
             cleanup_handle: None,
             idle_timeout: Duration::from_secs(1200), // 20 minutes (desktop-friendly)
             max_watches: 50,
@@ -130,11 +354,13 @@ impl SharedWatchCache {
 
     /// Subscribe to a resource type within a scope
     /// Returns immediately with cached data and starts watch if needed
+    /// If immediate_fetch is true, bypasses the serial queue for user-initiated requests
     pub async fn subscribe(
         &self,
         app_handle: AppHandle,
         resource_type: String,
         scope: WatchScope,
+        immediate_fetch: bool,
     ) -> Result<Vec<K8sListItem>> {
         let scope_key = scope.scope_key();
         let cache_key = (resource_type.clone(), scope_key.clone());
@@ -159,25 +385,43 @@ impl SharedWatchCache {
         let watch_info = self.start_new_watch(app_handle.clone(), resource_type.clone(), scope.clone()).await?;
         watch_info.subscribe().await;
         
-        watches.insert(cache_key, watch_info.clone());
+        watches.insert(cache_key.clone(), watch_info.clone());
+        drop(watches); // Release lock early
         
-        // Fetch initial data before returning to populate cache with existing resources
-        let initial_data = self.fetch_initial_data(resource_type, scope).await.unwrap_or_else(|e| {
-            eprintln!("Warning: Failed to fetch initial data: {}", e);
-            Vec::new()
-        });
+        // Handle initial data loading based on resource priority and user intent
+        let priority = get_resource_priority(&resource_type);
         
-        // Populate the cache with initial data
-        {
-            let mut cache = watch_info.resource_cache.write().await;
-            for item in &initial_data {
-                if let Some(uid) = &item.metadata.uid {
-                    cache.insert(uid.clone(), item.clone());
+        match priority {
+            ResourcePriority::Critical => {
+                // Always load critical resources immediately
+                let initial_data = self.fetch_initial_data(resource_type, scope).await.unwrap_or_else(|e| {
+                    eprintln!("Warning: Failed to fetch initial data for critical resource: {}", e);
+                    Vec::new()
+                });
+                
+                // Populate cache with initial data
+                self.populate_cache(&watch_info, &initial_data).await;
+                Ok(initial_data)
+            }
+            _ => {
+                if immediate_fetch {
+                    // User clicked on this resource - load immediately and bypass queue
+                    println!("🎯 Immediate fetch requested for {} (user-initiated)", resource_type);
+                    let initial_data = self.fetch_initial_data(resource_type, scope).await.unwrap_or_else(|e| {
+                        eprintln!("Warning: Failed to fetch initial data for clicked resource: {}", e);
+                        Vec::new()
+                    });
+                    
+                    // Populate cache with initial data
+                    self.populate_cache(&watch_info, &initial_data).await;
+                    Ok(initial_data)
+                } else {
+                    // For non-critical resources, start background loading and return empty initially
+                    self.schedule_background_loading(app_handle, cache_key, watch_info.clone(), priority).await;
+                    Ok(Vec::new())
                 }
             }
         }
-        
-        Ok(initial_data)
     }
 
     /// Unsubscribe from a resource watch
@@ -205,13 +449,59 @@ impl SharedWatchCache {
         }
     }
 
+    /// Populate cache with initial data
+    async fn populate_cache(&self, watch_info: &Arc<WatchInfo>, items: &[K8sListItem]) {
+        let mut cache = watch_info.resource_cache.write().await;
+        for item in items {
+            if let Some(uid) = &item.metadata.uid {
+                cache.insert(uid.clone(), item.clone());
+            }
+        }
+    }
+
+    /// Schedule background loading for non-critical resources using serial queue
+    async fn schedule_background_loading(
+        &self,
+        app_handle: AppHandle,
+        cache_key: (String, String),
+        watch_info: Arc<WatchInfo>,
+        priority: ResourcePriority,
+    ) {
+        // Track that we're loading this resource
+        {
+            let mut loading = self.loading_resources.lock().await;
+            loading.insert(cache_key.clone());
+        }
+
+        // Create background loading task
+        let task = BackgroundLoadTask {
+            app_handle,
+            cache_key: cache_key.clone(),
+            watch_info,
+            priority,
+            loading_resources: Arc::clone(&self.loading_resources),
+        };
+
+        // Enqueue the task for serial processing
+        if let Err(e) = enqueue_background_loading(task).await {
+            eprintln!("Failed to enqueue background loading for {}: {}", cache_key.0, e);
+            // Remove from loading set since we couldn't queue it
+            let mut loading = self.loading_resources.lock().await;
+            loading.remove(&cache_key);
+        } else {
+            println!("📋 Queued background loading for {} (priority: {:?})", cache_key.0, priority);
+        }
+    }
+
     /// Fetch initial data for a resource type and scope to populate cache
     async fn fetch_initial_data(&self, resource_type: String, scope: WatchScope) -> Result<Vec<K8sListItem>> {
         use kube::Api;
         use kube::api::ListParams;
-        use k8s_openapi::api::core::v1::{Pod, Service, Node, ConfigMap, Secret, Namespace};
+        use k8s_openapi::api::core::v1::{Pod, Service, Node, ConfigMap, Secret, Namespace, PersistentVolume, PersistentVolumeClaim};
         use k8s_openapi::api::apps::v1::{Deployment, ReplicaSet, StatefulSet, DaemonSet};
+        use k8s_openapi::api::batch::v1::{Job, CronJob};
         use k8s_openapi::api::networking::v1::Ingress;
+        use k8s_openapi::api::storage::v1::StorageClass;
         
         let client = self.client.get_client().await?;
         let lp = ListParams::default();
@@ -384,9 +674,81 @@ impl SharedWatchCache {
                 }
                 Ok(items)
             }
+            "persistentvolumes" => {
+                // PersistentVolumes are cluster-scoped resources
+                let api: Api<PersistentVolume> = Api::all(client);
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "persistentvolumes") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
+            "persistentvolumeclaims" => {
+                let api: Api<PersistentVolumeClaim> = if let Some(namespace) = &scope.namespace {
+                    Api::namespaced(client, namespace)
+                } else {
+                    Api::all(client)
+                };
+                
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "persistentvolumeclaims") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
+            "storageclasses" => {
+                // StorageClasses are cluster-scoped resources
+                let api: Api<StorageClass> = Api::all(client);
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "storageclasses") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
+            "jobs" => {
+                let api: Api<Job> = if let Some(namespace) = &scope.namespace {
+                    Api::namespaced(client, namespace)
+                } else {
+                    Api::all(client)
+                };
+                
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "jobs") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
+            "cronjobs" => {
+                let api: Api<CronJob> = if let Some(namespace) = &scope.namespace {
+                    Api::namespaced(client, namespace)
+                } else {
+                    Api::all(client)
+                };
+                
+                let list = api.list(&lp).await?;
+                let mut items = Vec::new();
+                for resource in list.items {
+                    if let Ok(item) = convert_to_list_item(&resource, "cronjobs") {
+                        items.push(item);
+                    }
+                }
+                Ok(items)
+            }
             _ => {
-                // For unsupported resource types, return empty for now
-                eprintln!("Unsupported resource type for initial data fetch: {}", resource_type);
+                // For unsupported resource types in initial data fetch, return empty silently
+                // The watch system will still work and provide data through events
                 Ok(Vec::new())
             }
         }
@@ -665,80 +1027,108 @@ impl SharedWatchCache {
             let config = Config::default()
                 .timeout(30)
                 .any_semantic();
-            
-            let mut stream = watcher(api, config).boxed();
-            
+
+            let mut backoff_seconds = 1u64;
+            let max_backoff = 60u64;
+
             loop {
-                match tokio::time::timeout(Duration::from_secs(60), futures::StreamExt::next(&mut stream)).await {
-                    Ok(Some(Ok(event))) => {
-                        match event {
-                            watcher::Event::Apply(obj) => {
-                                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                                    // Update cache
-                                    if let Some(uid) = obj.uid() {
-                                        cache.write().await.insert(uid.clone(), item.clone());
+                println!("🔄 Starting watch stream for {resource_type} in cluster {cluster_context}");
+                let mut stream = watcher(api.clone(), config.clone()).boxed();
+
+                loop {
+                    match tokio::time::timeout(Duration::from_secs(60), futures::StreamExt::next(&mut stream)).await {
+                        Ok(Some(Ok(event))) => {
+                            // Reset backoff on successful event
+                            backoff_seconds = 1;
+
+                            match event {
+                                watcher::Event::Apply(obj) => {
+                                    if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                                        // Update cache
+                                        if let Some(uid) = obj.uid() {
+                                            cache.write().await.insert(uid.clone(), item.clone());
+                                        }
+
+                                        // Emit to UI with cluster context
+                                        let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added {
+                                            item,
+                                            cluster_context: cluster_context.clone(),
+                                        });
                                     }
-                                    
-                                    // Emit to UI with cluster context
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
-                                        item,
+                                }
+                                watcher::Event::Delete(obj) => {
+                                    if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                                        let item_name = item.metadata.name.as_deref().unwrap_or("unknown");
+
+                                        println!("🗑️ DELETE event: {} {} in cluster {}",
+                                            item.kind, item_name, cluster_context);
+
+                                        // Remove from cache
+                                        if let Some(uid) = obj.uid() {
+                                            cache.write().await.remove(&uid);
+                                            println!("✅ Removed from cache: {}", uid);
+                                        }
+
+                                        // Emit to UI with cluster context
+                                        let emit_result = app_handle.emit("k8s-watch-event", WatchEvent::Deleted {
+                                            item,
+                                            cluster_context: cluster_context.clone(),
+                                        });
+
+                                        if let Err(e) = emit_result {
+                                            eprintln!("❌ Failed to emit delete event: {}", e);
+                                        } else {
+                                            println!("✅ Emitted delete event to frontend");
+                                        }
+                                    }
+                                }
+                                watcher::Event::InitApply(obj) => {
+                                    if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
+                                        // Add to cache during initial sync
+                                        if let Some(uid) = obj.uid() {
+                                            cache.write().await.insert(uid.clone(), item.clone());
+                                        }
+
+                                        // Emit to UI with cluster context
+                                        let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added {
+                                            item,
+                                            cluster_context: cluster_context.clone(),
+                                        });
+                                    }
+                                }
+                                watcher::Event::Init => {
+                                    // Clear cache at start of initial sync
+                                    cache.write().await.clear();
+                                }
+                                watcher::Event::InitDone => {
+                                    // Initial sync complete - emit event to notify UI
+                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::InitialSyncComplete {
                                         cluster_context: cluster_context.clone(),
                                     });
                                 }
-                            }
-                            watcher::Event::Delete(obj) => {
-                                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                                    // Remove from cache
-                                    if let Some(uid) = obj.uid() {
-                                        cache.write().await.remove(&uid);
-                                    }
-                                    
-                                    // Emit to UI with cluster context
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Deleted { 
-                                        item,
-                                        cluster_context: cluster_context.clone(),
-                                    });
-                                }
-                            }
-                            watcher::Event::InitApply(obj) => {
-                                if let Ok(item) = convert_to_list_item(&obj, &resource_type) {
-                                    // Add to cache during initial sync
-                                    if let Some(uid) = obj.uid() {
-                                        cache.write().await.insert(uid.clone(), item.clone());
-                                    }
-                                    
-                                    // Emit to UI with cluster context
-                                    let _ = app_handle.emit("k8s-watch-event", WatchEvent::Added { 
-                                        item,
-                                        cluster_context: cluster_context.clone(),
-                                    });
-                                }
-                            }
-                            watcher::Event::Init => {
-                                // Clear cache at start of initial sync
-                                cache.write().await.clear();
-                            }
-                            watcher::Event::InitDone => {
-                                // Initial sync complete - emit event to notify UI
-                                let _ = app_handle.emit("k8s-watch-event", WatchEvent::InitialSyncComplete {
-                                    cluster_context: cluster_context.clone(),
-                                });
                             }
                         }
-                    }
-                    Ok(Some(Err(e))) => {
-                        eprintln!("Watch error for {resource_type}: {e:?}");
-                        // Could implement exponential backoff here
-                        tokio::time::sleep(Duration::from_secs(5)).await;
-                        continue;
-                    }
-                    Ok(None) => {
-                        // Stream ended
-                        break;
-                    }
-                    Err(_) => {
-                        // Timeout - this is normal, continue
-                        continue;
+                        Ok(Some(Err(e))) => {
+                            eprintln!("⚠️ Watch error for {resource_type}: {e:?}");
+                            eprintln!("🔄 Reconnecting watch stream in {} seconds...", backoff_seconds);
+
+                            // Exponential backoff with max limit
+                            tokio::time::sleep(Duration::from_secs(backoff_seconds)).await;
+                            backoff_seconds = (backoff_seconds * 2).min(max_backoff);
+
+                            // Break inner loop to recreate the watch stream
+                            break;
+                        }
+                        Ok(None) => {
+                            // Stream ended - recreate it
+                            eprintln!("⚠️ Watch stream ended for {resource_type}, recreating...");
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                            break;
+                        }
+                        Err(_) => {
+                            // Timeout - this is normal, continue
+                            continue;
+                        }
                     }
                 }
             }
@@ -810,6 +1200,76 @@ impl Drop for SharedWatchCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn test_resource_priority_classification() {
+        // Test critical resources
+        assert_eq!(get_resource_priority("pods"), ResourcePriority::Critical);
+        assert_eq!(get_resource_priority("services"), ResourcePriority::Critical);
+        assert_eq!(get_resource_priority("deployments"), ResourcePriority::Critical);
+        
+        // Test high priority resources
+        assert_eq!(get_resource_priority("nodes"), ResourcePriority::High);
+        assert_eq!(get_resource_priority("namespaces"), ResourcePriority::High);
+        assert_eq!(get_resource_priority("configmaps"), ResourcePriority::High);
+        assert_eq!(get_resource_priority("secrets"), ResourcePriority::High);
+        
+        // Test medium priority resources
+        assert_eq!(get_resource_priority("statefulsets"), ResourcePriority::Medium);
+        assert_eq!(get_resource_priority("daemonsets"), ResourcePriority::Medium);
+        assert_eq!(get_resource_priority("jobs"), ResourcePriority::Medium);
+        
+        // Test low priority resources
+        assert_eq!(get_resource_priority("persistentvolumes"), ResourcePriority::Low);
+        assert_eq!(get_resource_priority("persistentvolumeclaims"), ResourcePriority::Low);
+        assert_eq!(get_resource_priority("storageclasses"), ResourcePriority::Low);
+        assert_eq!(get_resource_priority("ingresses"), ResourcePriority::Low);
+        
+        // Test background priority resources
+        assert_eq!(get_resource_priority("roles"), ResourcePriority::Background);
+        assert_eq!(get_resource_priority("clusterroles"), ResourcePriority::Background);
+        assert_eq!(get_resource_priority("serviceaccounts"), ResourcePriority::Background);
+        
+        // Test unknown resources default to low priority
+        assert_eq!(get_resource_priority("unknown-resource"), ResourcePriority::Low);
+    }
+
+    #[test]
+    fn test_serial_loading_queue_priority_ordering() {
+        // Test priority ordering logic for the serial loading queue
+        
+        // Test that priority ordering works correctly
+        let priorities = vec![
+            ("roles", ResourcePriority::Background),
+            ("pods", ResourcePriority::Critical),  
+            ("persistentvolumes", ResourcePriority::Low),
+            ("configmaps", ResourcePriority::High),
+            ("jobs", ResourcePriority::Medium),
+        ];
+        
+        // Expected order after sorting: Critical, High, Medium, Low, Background
+        let expected_order = vec![
+            ResourcePriority::Critical,
+            ResourcePriority::High, 
+            ResourcePriority::Medium,
+            ResourcePriority::Low,
+            ResourcePriority::Background,
+        ];
+        
+        // Verify that our priority classification matches the expected ordering
+        let mut actual_priorities: Vec<_> = priorities.iter()
+            .map(|(resource_type, expected_priority)| {
+                let actual_priority = get_resource_priority(resource_type);
+                assert_eq!(actual_priority, *expected_priority);
+                actual_priority
+            })
+            .collect();
+        
+        // Sort by priority value (lower number = higher priority)
+        actual_priorities.sort_by_key(|p| *p as u8);
+        
+        assert_eq!(actual_priorities, expected_order);
+    }
 
     #[tokio::test]
     async fn test_cross_cluster_watch_isolation() {

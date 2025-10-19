@@ -16,6 +16,7 @@
         :resource="selectedResource" 
         :items="resourceItems"
         :loading="loading || isChangingNamespaces"
+        :isLoadingInBackground="isLoadingInBackground"
         :namespaces="namespaces"
         :selectedNamespaces="selectedNamespaces"
         :error="error"
@@ -63,6 +64,7 @@ interface Props {
   resourceItems: K8sListItem[]
   loading: boolean
   isChangingNamespaces: boolean
+  isLoadingInBackground: boolean
   namespaces: string[]
   selectedNamespaces: string[]
   selectedContext: K8sContext | null
