@@ -351,19 +351,33 @@ jobs:
         run: |
           echo "🔍 Validating Linux artifacts..."
 
-          # Check DEB files
-          DEB_FILES=$(find src-tauri/target/release/bundle/deb -type f -name "*.deb")
-          if [ -z "$DEB_FILES" ]; then
-            echo "❌ Error: No DEB files found"
+          # Debug: Show what find actually returns
+          echo "📋 Searching for DEB files..."
+          find src-tauri/target/release/bundle/deb -type f -name "*.deb" -print || {
+            echo "❌ Error running find command"
             echo "Contents of bundle directory:"
             ls -laR src-tauri/target/release/bundle/ || true
             exit 1
+          }
+
+          # Check DEB files using a more robust approach
+          cd src-tauri/target/release/bundle/deb
+          shopt -s nullglob
+          DEB_FILES=(*.deb)
+
+          if [ ${#DEB_FILES[@]} -eq 0 ]; then
+            echo "❌ Error: No DEB files found"
+            echo "Contents of deb directory:"
+            ls -laR . || true
+            exit 1
           fi
 
-          for deb in $DEB_FILES; do
+          echo "📦 Found ${#DEB_FILES[@]} DEB file(s)"
+
+          for deb in "${DEB_FILES[@]}"; do
             FILE_SIZE=$(stat -c%s "$deb")
             SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $FILE_SIZE/1048576}")
-            echo "✅ $(basename "$deb"): ${SIZE_MB} MB"
+            echo "✅ $deb: ${SIZE_MB} MB"
 
             if [ "$FILE_SIZE" -lt 1048576 ]; then
               echo "❌ Error: DEB file is suspiciously small ($FILE_SIZE bytes)"
@@ -372,11 +386,12 @@ jobs:
           done
 
           # Check checksum file
-          CHECKSUM_FILE="src-tauri/target/release/bundle/checksums-linux.txt"
+          cd ../..
+          CHECKSUM_FILE="checksums-linux.txt"
           if [ ! -f "$CHECKSUM_FILE" ]; then
-            echo "❌ Error: Checksum file not found at: $CHECKSUM_FILE"
+            echo "❌ Error: Checksum file not found at: $(pwd)/$CHECKSUM_FILE"
             echo "Contents of bundle directory:"
-            ls -laR src-tauri/target/release/bundle/ || true
+            ls -la . || true
             exit 1
           fi
 

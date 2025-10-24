@@ -1,0 +1,284 @@
+name: Test Release Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test-release-*
+
+jobs:
+  test-linux-validation:
+    runs-on: ubicloud-standard-8
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Generate checksums
+        run: |
+          cd src-tauri/target/release/bundle/deb
+
+          # Verify DEB files exist
+          if ! ls *.deb 1> /dev/null 2>&1; then
+            echo "❌ Error: No DEB files found for checksum generation"
+            exit 1
+          fi
+
+          echo "📦 Generating checksums..."
+          shasum -a 256 *.deb > ../checksums-linux.txt
+
+          # Verify checksum file was created and is not empty
+          if [ ! -s ../checksums-linux.txt ]; then
+            echo "❌ Error: Checksum file is empty or was not created"
+            exit 1
+          fi
+
+          echo "✅ Checksums generated:"
+          cat ../checksums-linux.txt
+
+      - name: Validate Linux artifacts
+        run: |
+          echo "🔍 Validating Linux artifacts..."
+
+          # Debug: Show what find actually returns
+          echo "📋 Searching for DEB files..."
+          find src-tauri/target/release/bundle/deb -type f -name "*.deb" -print || {
+            echo "❌ Error running find command"
+            echo "Contents of bundle directory:"
+            ls -laR src-tauri/target/release/bundle/ || true
+            exit 1
+          }
+
+          # Check DEB files using a more robust approach
+          cd src-tauri/target/release/bundle/deb
+          shopt -s nullglob
+          DEB_FILES=(*.deb)
+
+          if [ ${#DEB_FILES[@]} -eq 0 ]; then
+            echo "❌ Error: No DEB files found"
+            echo "Contents of deb directory:"
+            ls -laR . || true
+            exit 1
+          fi
+
+          echo "📦 Found ${#DEB_FILES[@]} DEB file(s)"
+
+          for deb in "${DEB_FILES[@]}"; do
+            FILE_SIZE=$(stat -c%s "$deb")
+            SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $FILE_SIZE/1048576}")
+            echo "✅ $deb: ${SIZE_MB} MB"
+
+            if [ "$FILE_SIZE" -lt 1048576 ]; then
+              echo "❌ Error: DEB file is suspiciously small ($FILE_SIZE bytes)"
+              exit 1
+            fi
+          done
+
+          # Check checksum file
+          cd ../..
+          CHECKSUM_FILE="checksums-linux.txt"
+          if [ ! -f "$CHECKSUM_FILE" ]; then
+            echo "❌ Error: Checksum file not found at: $(pwd)/$CHECKSUM_FILE"
+            echo "Contents of bundle directory:"
+            ls -la . || true
+            exit 1
+          fi
+
+          CHECKSUM_SIZE=$(stat -c%s "$CHECKSUM_FILE")
+          if [ "$CHECKSUM_SIZE" -eq 0 ]; then
+            echo "❌ Error: Checksum file is empty"
+            exit 1
+          fi
+
+          echo "✅ Checksum file: $CHECKSUM_SIZE bytes"
+          echo "✅ All Linux artifact validations passed!"
+
+      - name: Test artifact upload structure
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-linux-packages
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/checksums-linux.txt
+
+      - name: Show final structure
+        run: |
+          echo "📁 Final bundle structure:"
+          ls -laR src-tauri/target/release/bundle/
+
+  test-windows-validation:
+    runs-on: windows-2022-16-cores
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          cd src-tauri/target/release/bundle/msi
+
+          # Verify MSI files exist
+          $msiFiles = Get-ChildItem -Filter *.msi
+          if ($msiFiles.Count -eq 0) {
+            Write-Host "❌ Error: No MSI files found for checksum generation"
+            exit 1
+          }
+
+          Write-Host "📦 Found $($msiFiles.Count) MSI file(s)"
+
+          # Generate checksums
+          $msiFiles | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)"
+          } | Out-File -FilePath ..\checksums-windows.txt -Encoding UTF8
+
+          # Verify checksum file was created and is not empty
+          $checksumFile = "..\checksums-windows.txt"
+          if (-not (Test-Path $checksumFile)) {
+            Write-Host "❌ Error: Checksum file was not created"
+            exit 1
+          }
+
+          $fileSize = (Get-Item $checksumFile).Length
+          if ($fileSize -eq 0) {
+            Write-Host "❌ Error: Checksum file is empty"
+            exit 1
+          }
+
+          Write-Host "✅ Checksums generated ($fileSize bytes):"
+          Get-Content $checksumFile
+
+      - name: Validate Windows artifacts
+        shell: pwsh
+        run: |
+          $msiPath = "src-tauri/target/release/bundle/msi"
+          $checksumPath = "src-tauri/target/release/bundle/checksums-windows.txt"
+
+          Write-Host "🔍 Validating Windows artifacts..."
+
+          # Check MSI files
+          $msiFiles = Get-ChildItem -Path $msiPath -Filter *.msi
+          if ($msiFiles.Count -eq 0) {
+            Write-Host "❌ Error: No MSI files found"
+            exit 1
+          }
+
+          foreach ($msi in $msiFiles) {
+            $sizeMB = [math]::Round($msi.Length / 1MB, 2)
+            Write-Host "✅ $($msi.Name): $sizeMB MB"
+
+            if ($msi.Length -lt 1MB) {
+              Write-Host "❌ Error: MSI file is suspiciously small"
+              exit 1
+            }
+          }
+
+          # Check checksum file
+          if (-not (Test-Path $checksumPath)) {
+            Write-Host "❌ Error: Checksum file not found"
+            exit 1
+          }
+
+          $checksumSize = (Get-Item $checksumPath).Length
+          if ($checksumSize -eq 0) {
+            Write-Host "❌ Error: Checksum file is empty"
+            exit 1
+          }
+
+          Write-Host "✅ Checksum file: $checksumSize bytes"
+          Write-Host "✅ All Windows artifact validations passed!"
+
+      - name: Test artifact upload structure
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-windows-installers
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/checksums-windows.txt
+
+      - name: Show final structure
+        shell: pwsh
+        run: |
+          Write-Host "📁 Final bundle structure:"
+          Get-ChildItem -Recurse src-tauri/target/release/bundle/
+
+  test-artifact-download:
+    needs: [test-linux-validation, test-windows-validation]
+    runs-on: ubicloud-standard-8
+
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts
+
+      - name: Display artifact structure
+        run: |
+          echo "📦 Downloaded artifact structure:"
+          ls -laR test-artifacts/
+
+      - name: Verify artifact paths match release workflow expectations
+        run: |
+          echo "🔍 Verifying paths..."
+
+          # Check Linux artifacts
+          if [ -d "test-artifacts/test-linux-packages/deb" ]; then
+            echo "✅ Linux: artifacts/linux-packages/deb/*.deb path exists"
+            ls -la test-artifacts/test-linux-packages/deb/*.deb || echo "⚠️  No .deb files in subdirectory"
+          else
+            echo "📋 Linux artifacts are at root level (not in deb/ subdirectory)"
+            ls -la test-artifacts/test-linux-packages/*.deb || echo "⚠️  No .deb files"
+          fi
+
+          # Check Windows artifacts
+          if [ -d "test-artifacts/test-windows-installers/msi" ]; then
+            echo "✅ Windows: artifacts/windows-installers/msi/*.msi path exists"
+            ls -la test-artifacts/test-windows-installers/msi/*.msi || echo "⚠️  No .msi files in subdirectory"
+          else
+            echo "📋 Windows artifacts are at root level (not in msi/ subdirectory)"
+            ls -la test-artifacts/test-windows-installers/*.msi || echo "⚠️  No .msi files"
+          fi
+
+          echo ""
+          echo "💡 Use these paths in the release workflow files: section"
