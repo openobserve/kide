@@ -33,7 +33,7 @@
     "@types/node": "^24.2.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/test-utils": "^2.4.6",
-    "@vue/tsconfig": "^0.7.0",
+    "@vue/tsconfig": "^0.8.1",
     "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.2",
