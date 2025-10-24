@@ -355,12 +355,19 @@ jobs:
           DEB_FILES=$(find src-tauri/target/release/bundle/deb -name "*.deb")
           if [ -z "$DEB_FILES" ]; then
             echo "❌ Error: No DEB files found"
+            echo "Contents of bundle directory:"
+            ls -la src-tauri/target/release/bundle/ || true
             exit 1
           fi
 
           for deb in $DEB_FILES; do
-            FILE_SIZE=$(stat -c%s "$deb" 2>/dev/null || stat -f%z "$deb" 2>/dev/null)
-            SIZE_MB=$(echo "scale=2; $FILE_SIZE / 1048576" | bc)
+            if [ ! -f "$deb" ]; then
+              echo "❌ Error: DEB file not found: $deb"
+              exit 1
+            fi
+
+            FILE_SIZE=$(stat -c%s "$deb")
+            SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $FILE_SIZE/1048576}")
             echo "✅ $(basename "$deb"): ${SIZE_MB} MB"
 
             if [ "$FILE_SIZE" -lt 1048576 ]; then
@@ -372,11 +379,13 @@ jobs:
           # Check checksum file
           CHECKSUM_FILE="src-tauri/target/release/bundle/checksums-linux.txt"
           if [ ! -f "$CHECKSUM_FILE" ]; then
-            echo "❌ Error: Checksum file not found"
+            echo "❌ Error: Checksum file not found at: $CHECKSUM_FILE"
+            echo "Contents of bundle directory:"
+            ls -la src-tauri/target/release/bundle/ || true
             exit 1
           fi
 
-          CHECKSUM_SIZE=$(stat -c%s "$CHECKSUM_FILE" 2>/dev/null || stat -f%z "$CHECKSUM_FILE" 2>/dev/null)
+          CHECKSUM_SIZE=$(stat -c%s "$CHECKSUM_FILE")
           if [ "$CHECKSUM_SIZE" -eq 0 ]; then
             echo "❌ Error: Checksum file is empty"
             exit 1
