@@ -328,8 +328,62 @@ jobs:
       - name: Generate checksums
         run: |
           cd src-tauri/target/release/bundle/deb
+
+          # Verify DEB files exist
+          if ! ls *.deb 1> /dev/null 2>&1; then
+            echo "❌ Error: No DEB files found for checksum generation"
+            exit 1
+          fi
+
+          echo "📦 Generating checksums..."
           shasum -a 256 *.deb > ../checksums-linux.txt
+
+          # Verify checksum file was created and is not empty
+          if [ ! -s ../checksums-linux.txt ]; then
+            echo "❌ Error: Checksum file is empty or was not created"
+            exit 1
+          fi
+
+          echo "✅ Checksums generated:"
           cat ../checksums-linux.txt
+
+      - name: Validate Linux artifacts before upload
+        run: |
+          echo "🔍 Validating Linux artifacts..."
+
+          # Check DEB files
+          DEB_FILES=$(find src-tauri/target/release/bundle/deb -name "*.deb")
+          if [ -z "$DEB_FILES" ]; then
+            echo "❌ Error: No DEB files found"
+            exit 1
+          fi
+
+          for deb in $DEB_FILES; do
+            FILE_SIZE=$(stat -c%s "$deb" 2>/dev/null || stat -f%z "$deb" 2>/dev/null)
+            SIZE_MB=$(echo "scale=2; $FILE_SIZE / 1048576" | bc)
+            echo "✅ $(basename "$deb"): ${SIZE_MB} MB"
+
+            if [ "$FILE_SIZE" -lt 1048576 ]; then
+              echo "❌ Error: DEB file is suspiciously small ($FILE_SIZE bytes)"
+              exit 1
+            fi
+          done
+
+          # Check checksum file
+          CHECKSUM_FILE="src-tauri/target/release/bundle/checksums-linux.txt"
+          if [ ! -f "$CHECKSUM_FILE" ]; then
+            echo "❌ Error: Checksum file not found"
+            exit 1
+          fi
+
+          CHECKSUM_SIZE=$(stat -c%s "$CHECKSUM_FILE" 2>/dev/null || stat -f%z "$CHECKSUM_FILE" 2>/dev/null)
+          if [ "$CHECKSUM_SIZE" -eq 0 ]; then
+            echo "❌ Error: Checksum file is empty"
+            exit 1
+          fi
+
+          echo "✅ Checksum file: $CHECKSUM_SIZE bytes"
+          echo "✅ All Linux artifact validations passed!"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -366,11 +420,77 @@ jobs:
         shell: pwsh
         run: |
           cd src-tauri/target/release/bundle/msi
-          Get-ChildItem -Include *.msi | ForEach-Object {
+
+          # Verify MSI files exist
+          $msiFiles = Get-ChildItem -Filter *.msi
+          if ($msiFiles.Count -eq 0) {
+            Write-Host "❌ Error: No MSI files found for checksum generation"
+            exit 1
+          }
+
+          Write-Host "📦 Found $($msiFiles.Count) MSI file(s)"
+
+          # Generate checksums
+          $msiFiles | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
             "$($hash.Hash)  $($_.Name)"
-          } | Out-File -FilePath ..\checksums-windows.txt
-          Get-Content ..\checksums-windows.txt
+          } | Out-File -FilePath ..\checksums-windows.txt -Encoding UTF8
+
+          # Verify checksum file was created and is not empty
+          $checksumFile = "..\checksums-windows.txt"
+          if (-not (Test-Path $checksumFile)) {
+            Write-Host "❌ Error: Checksum file was not created"
+            exit 1
+          }
+
+          $fileSize = (Get-Item $checksumFile).Length
+          if ($fileSize -eq 0) {
+            Write-Host "❌ Error: Checksum file is empty"
+            exit 1
+          }
+
+          Write-Host "✅ Checksums generated ($fileSize bytes):"
+          Get-Content $checksumFile
+
+      - name: Validate Windows artifacts before upload
+        shell: pwsh
+        run: |
+          $msiPath = "src-tauri/target/release/bundle/msi"
+          $checksumPath = "src-tauri/target/release/bundle/checksums-windows.txt"
+
+          Write-Host "🔍 Validating Windows artifacts..."
+
+          # Check MSI files
+          $msiFiles = Get-ChildItem -Path $msiPath -Filter *.msi
+          if ($msiFiles.Count -eq 0) {
+            Write-Host "❌ Error: No MSI files found"
+            exit 1
+          }
+
+          foreach ($msi in $msiFiles) {
+            $sizeMB = [math]::Round($msi.Length / 1MB, 2)
+            Write-Host "✅ $($msi.Name): $sizeMB MB"
+
+            if ($msi.Length -lt 1MB) {
+              Write-Host "❌ Error: MSI file is suspiciously small"
+              exit 1
+            }
+          }
+
+          # Check checksum file
+          if (-not (Test-Path $checksumPath)) {
+            Write-Host "❌ Error: Checksum file not found"
+            exit 1
+          }
+
+          $checksumSize = (Get-Item $checksumPath).Length
+          if ($checksumSize -eq 0) {
+            Write-Host "❌ Error: Checksum file is empty"
+            exit 1
+          }
+
+          Write-Host "✅ Checksum file: $checksumSize bytes"
+          Write-Host "✅ All Windows artifact validations passed!"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
