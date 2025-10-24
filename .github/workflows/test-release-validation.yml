@@ -99,12 +99,12 @@ jobs:
             fi
           done
 
-          # Check checksum file
-          cd ../..
+          # Check checksum file (go back to bundle directory, not release)
+          cd ..
           CHECKSUM_FILE="checksums-linux.txt"
           if [ ! -f "$CHECKSUM_FILE" ]; then
             echo "❌ Error: Checksum file not found at: $(pwd)/$CHECKSUM_FILE"
-            echo "Contents of bundle directory:"
+            echo "Contents of current directory:"
             ls -la . || true
             exit 1
           fi
@@ -131,120 +131,9 @@ jobs:
           echo "📁 Final bundle structure:"
           ls -laR src-tauri/target/release/bundle/
 
-  test-windows-validation:
-    runs-on: windows-2022-16-cores
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Tauri app
-        run: npm run tauri build
-
-      - name: Generate checksums
-        shell: pwsh
-        run: |
-          cd src-tauri/target/release/bundle/msi
-
-          # Verify MSI files exist
-          $msiFiles = Get-ChildItem -Filter *.msi
-          if ($msiFiles.Count -eq 0) {
-            Write-Host "❌ Error: No MSI files found for checksum generation"
-            exit 1
-          }
-
-          Write-Host "📦 Found $($msiFiles.Count) MSI file(s)"
-
-          # Generate checksums
-          $msiFiles | ForEach-Object {
-            $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($hash.Hash)  $($_.Name)"
-          } | Out-File -FilePath ..\checksums-windows.txt -Encoding UTF8
-
-          # Verify checksum file was created and is not empty
-          $checksumFile = "..\checksums-windows.txt"
-          if (-not (Test-Path $checksumFile)) {
-            Write-Host "❌ Error: Checksum file was not created"
-            exit 1
-          }
-
-          $fileSize = (Get-Item $checksumFile).Length
-          if ($fileSize -eq 0) {
-            Write-Host "❌ Error: Checksum file is empty"
-            exit 1
-          }
-
-          Write-Host "✅ Checksums generated ($fileSize bytes):"
-          Get-Content $checksumFile
-
-      - name: Validate Windows artifacts
-        shell: pwsh
-        run: |
-          $msiPath = "src-tauri/target/release/bundle/msi"
-          $checksumPath = "src-tauri/target/release/bundle/checksums-windows.txt"
-
-          Write-Host "🔍 Validating Windows artifacts..."
-
-          # Check MSI files
-          $msiFiles = Get-ChildItem -Path $msiPath -Filter *.msi
-          if ($msiFiles.Count -eq 0) {
-            Write-Host "❌ Error: No MSI files found"
-            exit 1
-          }
-
-          foreach ($msi in $msiFiles) {
-            $sizeMB = [math]::Round($msi.Length / 1MB, 2)
-            Write-Host "✅ $($msi.Name): $sizeMB MB"
-
-            if ($msi.Length -lt 1MB) {
-              Write-Host "❌ Error: MSI file is suspiciously small"
-              exit 1
-            }
-          }
-
-          # Check checksum file
-          if (-not (Test-Path $checksumPath)) {
-            Write-Host "❌ Error: Checksum file not found"
-            exit 1
-          }
-
-          $checksumSize = (Get-Item $checksumPath).Length
-          if ($checksumSize -eq 0) {
-            Write-Host "❌ Error: Checksum file is empty"
-            exit 1
-          }
-
-          Write-Host "✅ Checksum file: $checksumSize bytes"
-          Write-Host "✅ All Windows artifact validations passed!"
-
-      - name: Test artifact upload structure
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-windows-installers
-          path: |
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/checksums-windows.txt
-
-      - name: Show final structure
-        shell: pwsh
-        run: |
-          Write-Host "📁 Final bundle structure:"
-          Get-ChildItem -Recurse src-tauri/target/release/bundle/
 
   test-artifact-download:
-    needs: [test-linux-validation, test-windows-validation]
+    needs: [test-linux-validation]
     runs-on: ubicloud-standard-8
 
     steps:

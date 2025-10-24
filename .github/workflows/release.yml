@@ -385,12 +385,12 @@ jobs:
             fi
           done
 
-          # Check checksum file
-          cd ../..
+          # Check checksum file (go back to bundle directory, not release)
+          cd ..
           CHECKSUM_FILE="checksums-linux.txt"
           if [ ! -f "$CHECKSUM_FILE" ]; then
             echo "❌ Error: Checksum file not found at: $(pwd)/$CHECKSUM_FILE"
-            echo "Contents of bundle directory:"
+            echo "Contents of current directory:"
             ls -la . || true
             exit 1
           fi
