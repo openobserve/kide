@@ -352,20 +352,15 @@ jobs:
           echo "🔍 Validating Linux artifacts..."
 
           # Check DEB files
-          DEB_FILES=$(find src-tauri/target/release/bundle/deb -name "*.deb")
+          DEB_FILES=$(find src-tauri/target/release/bundle/deb -type f -name "*.deb")
           if [ -z "$DEB_FILES" ]; then
             echo "❌ Error: No DEB files found"
             echo "Contents of bundle directory:"
-            ls -la src-tauri/target/release/bundle/ || true
+            ls -laR src-tauri/target/release/bundle/ || true
             exit 1
           fi
 
           for deb in $DEB_FILES; do
-            if [ ! -f "$deb" ]; then
-              echo "❌ Error: DEB file not found: $deb"
-              exit 1
-            fi
-
             FILE_SIZE=$(stat -c%s "$deb")
             SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $FILE_SIZE/1048576}")
             echo "✅ $(basename "$deb"): ${SIZE_MB} MB"
@@ -381,7 +376,7 @@ jobs:
           if [ ! -f "$CHECKSUM_FILE" ]; then
             echo "❌ Error: Checksum file not found at: $CHECKSUM_FILE"
             echo "Contents of bundle directory:"
-            ls -la src-tauri/target/release/bundle/ || true
+            ls -laR src-tauri/target/release/bundle/ || true
             exit 1
           fi
 
