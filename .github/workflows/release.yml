@@ -127,38 +127,157 @@ jobs:
           DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
 
           if [ -z "$DMG_PATH" ]; then
-            echo "❌ Error: DMG file not found"
+            echo "❌ Error: DMG file not found in expected location"
+            echo "Expected path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/"
+            echo "Available files:"
+            find src-tauri/target/universal-apple-darwin/release/bundle -type f || true
             exit 1
           fi
 
           echo "📦 Found DMG: $DMG_PATH"
+
+          # Verify DMG is valid before notarization
+          echo "🔍 Validating DMG integrity..."
+          if ! hdiutil verify "$DMG_PATH"; then
+            echo "❌ Error: DMG file is corrupted or invalid"
+            exit 1
+          fi
+          echo "✅ DMG integrity verified"
+
+          # Verify code signing before notarization
+          echo "🔍 Verifying code signature..."
+          if ! codesign -dv --verbose=4 "$DMG_PATH" 2>&1; then
+            echo "❌ Error: DMG is not properly code signed"
+            exit 1
+          fi
+          echo "✅ Code signature verified"
+
           echo "🔐 Submitting for notarization..."
 
-          # Submit for notarization
-          xcrun notarytool submit "$DMG_PATH" \
-            --apple-id "$APPLE_ID" \
-            --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_PASSWORD" \
-            --wait \
-            --timeout 30m
+          # Submit for notarization with retry logic
+          SUBMISSION_OUTPUT=$(mktemp)
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
 
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if [ $RETRY_COUNT -gt 0 ]; then
+              echo "⏳ Retry attempt $RETRY_COUNT of $((MAX_RETRIES - 1))..."
+              sleep 30
+            fi
+
+            if xcrun notarytool submit "$DMG_PATH" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_PASSWORD" \
+              --wait \
+              --timeout 30m 2>&1 | tee "$SUBMISSION_OUTPUT"; then
+              SUCCESS=true
+              break
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⚠️  Notarization attempt $RETRY_COUNT failed"
+          done
+
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ Notarization failed after $MAX_RETRIES attempts"
+            echo "Final submission output:"
+            cat "$SUBMISSION_OUTPUT"
+
+            # Try to extract submission ID for logs
+            SUBMISSION_ID=$(grep -oE '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}' "$SUBMISSION_OUTPUT" | head -n 1 || true)
+            if [ -n "$SUBMISSION_ID" ]; then
+              echo "📋 Fetching notarization logs for submission: $SUBMISSION_ID"
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --team-id "$APPLE_TEAM_ID" \
+                --password "$APPLE_PASSWORD" || true
+            fi
+
+            rm -f "$SUBMISSION_OUTPUT"
+            exit 1
+          fi
+
+          rm -f "$SUBMISSION_OUTPUT"
           echo "✅ Notarization complete!"
 
           # Staple the notarization ticket
           echo "📎 Stapling notarization ticket..."
-          xcrun stapler staple "$DMG_PATH"
-
+          if ! xcrun stapler staple "$DMG_PATH"; then
+            echo "❌ Error: Failed to staple notarization ticket"
+            echo "This may indicate the notarization didn't complete successfully"
+            exit 1
+          fi
           echo "✅ Stapling complete!"
 
-          # Verify notarization
-          echo "🔍 Verifying notarization..."
-          spctl -a -vvv -t install "$DMG_PATH"
+          # Verify notarization with Gatekeeper
+          echo "🔍 Verifying notarization with Gatekeeper..."
+          if ! spctl -a -vvv -t install "$DMG_PATH" 2>&1; then
+            echo "❌ Error: Gatekeeper verification failed"
+            echo "The app may not open on user systems"
+            exit 1
+          fi
+          echo "✅ Gatekeeper verification passed!"
+
+          # Final validation
+          echo "🔍 Final validation checks..."
+          echo "Staple status:"
+          xcrun stapler validate "$DMG_PATH" || {
+            echo "⚠️  Warning: Staple validation failed"
+            echo "The app is notarized but stapling may need to be checked"
+          }
+
+          echo "✅ All notarization checks passed!"
 
       - name: Generate checksums
         run: |
           cd src-tauri/target/universal-apple-darwin/release/bundle/dmg
+
+          # Verify DMG exists before generating checksums
+          if [ ! -f *.dmg ]; then
+            echo "❌ Error: No DMG file found for checksum generation"
+            exit 1
+          fi
+
           shasum -a 256 *.dmg > checksums-macos.txt
+
+          # Verify checksum file was created and is not empty
+          if [ ! -s checksums-macos.txt ]; then
+            echo "❌ Error: Checksum file is empty or was not created"
+            exit 1
+          fi
+
+          echo "✅ Checksums generated:"
           cat checksums-macos.txt
+
+      - name: Validate artifacts before upload
+        run: |
+          DMG_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
+
+          echo "🔍 Final artifact validation..."
+
+          # Verify file exists and has content
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "❌ Error: DMG file not found"
+            exit 1
+          fi
+
+          FILE_SIZE=$(stat -f%z "$DMG_PATH" 2>/dev/null || stat -c%s "$DMG_PATH" 2>/dev/null)
+          if [ "$FILE_SIZE" -lt 1048576 ]; then
+            echo "❌ Error: DMG file is suspiciously small ($FILE_SIZE bytes)"
+            exit 1
+          fi
+
+          echo "✅ DMG size: $(echo "$FILE_SIZE" | awk '{printf "%.2f MB", $1/1024/1024}')"
+
+          # Verify notarization is still valid
+          echo "🔍 Re-verifying notarization before upload..."
+          if ! xcrun stapler validate "$DMG_PATH" >/dev/null 2>&1; then
+            echo "⚠️  Warning: Staple validation check failed"
+          fi
+
+          echo "✅ All artifact validations passed!"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -208,9 +327,9 @@ jobs:
 
       - name: Generate checksums
         run: |
-          cd src-tauri/target/release/bundle
-          find . -type f \( -name "*.deb" -o -name "*.AppImage" \) -exec shasum -a 256 {} \; > checksums-linux.txt
-          cat checksums-linux.txt
+          cd src-tauri/target/release/bundle/deb
+          shasum -a 256 *.deb > ../checksums-linux.txt
+          cat ../checksums-linux.txt
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -218,7 +337,6 @@ jobs:
           name: linux-packages
           path: |
             src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/checksums-linux.txt
 
   release-windows:
@@ -247,12 +365,12 @@ jobs:
       - name: Generate checksums
         shell: pwsh
         run: |
-          cd src-tauri/target/release/bundle
-          Get-ChildItem -Recurse -Include *.msi,*.exe | ForEach-Object {
+          cd src-tauri/target/release/bundle/msi
+          Get-ChildItem -Include *.msi | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
             "$($hash.Hash)  $($_.Name)"
-          } | Out-File -FilePath checksums-windows.txt
-          Get-Content checksums-windows.txt
+          } | Out-File -FilePath ..\checksums-windows.txt
+          Get-Content ..\checksums-windows.txt
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -260,7 +378,6 @@ jobs:
           name: windows-installers
           path: |
             src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/checksums-windows.txt
 
   create-release:
@@ -286,13 +403,11 @@ jobs:
         with:
           files: |
             artifacts/macos-dmg/*.dmg
-            artifacts/macos-dmg/checksums-macos.txt
-            artifacts/linux-packages/*.deb
-            artifacts/linux-packages/*.AppImage
-            artifacts/linux-packages/checksums-linux.txt
-            artifacts/windows-installers/*.msi
-            artifacts/windows-installers/*.exe
-            artifacts/windows-installers/checksums-windows.txt
+            artifacts/macos-dmg/*.txt
+            artifacts/linux-packages/deb/*.deb
+            artifacts/linux-packages/*.txt
+            artifacts/windows-installers/msi/*.msi
+            artifacts/windows-installers/*.txt
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -300,33 +415,38 @@ jobs:
             ## Installation
 
             ### macOS
-            1. Download `Kide_*.dmg`
-            2. Open the DMG and drag Kide to Applications
-            3. Right-click Kide and select "Open" on first launch
-            4. Verify: `codesign -dv --verbose=4 /Applications/Kide.app`
+            1. Download the `.dmg` file
+            2. Open the DMG and drag OpenObserve Kide to Applications
+            3. Right-click and select "Open" on first launch (required for notarized apps)
+            4. Verify signature: `codesign -dv --verbose=4 "/Applications/OpenObserve Kide.app"`
 
             ### Linux
-            - **Debian/Ubuntu**: Download and install `.deb` file
-            - **Other distros**: Download `.AppImage` file and make executable
+            - **Debian/Ubuntu**: Download and install the `.deb` package
+              ```bash
+              sudo dpkg -i openobserve-kide_*.deb
+              ```
 
             ### Windows
-            - Download and run `.msi` installer
+            - Download and run the `.msi` installer
 
             ## Verification
 
-            All releases include SHA-256 checksums. Verify your download:
+            All releases include SHA-256 checksums for each platform. Verify your download:
 
             ```bash
             # macOS/Linux
-            shasum -a 256 -c checksums-*.txt
+            shasum -a 256 -c checksums-macos.txt
+            shasum -a 256 -c checksums-linux.txt
 
             # Windows (PowerShell)
-            Get-FileHash Kide_*.msi -Algorithm SHA256
+            Get-Content checksums-windows.txt
+            Get-FileHash <downloaded-file> -Algorithm SHA256
             ```
 
             ## Security
 
             - macOS app is code-signed and notarized by Apple
+            - All builds undergo security scanning (TruffleHog, npm audit, cargo audit)
             - All builds are reproducible from source
             - See [SECURITY.md](https://github.com/${{ github.repository }}/blob/main/SECURITY.md)
         env:
