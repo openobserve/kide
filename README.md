@@ -2,6 +2,8 @@
 
 OpenObserve Kide is a lightweight and fast Kubernetes IDE.
 
+![OpenObserve Kide](screenshots/kide.png)
+
 ## Installation
 
 Download the latest release for your platform from the [Releases page](https://github.com/openobserve/kide/releases).
