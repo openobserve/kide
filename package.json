@@ -25,7 +25,7 @@
     "js-yaml": "^4.1.0",
     "monaco-editor": "^0.52.2",
     "pinia": "^3.0.3",
-    "vue": "^3.5.18"
+    "vue": "^3.5.22"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",
