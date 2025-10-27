@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Download all test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: test-artifacts
 
