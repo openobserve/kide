@@ -27,7 +27,7 @@ tokio-util = { version = "0.7.16", features = ["io"] }
 tokio-stream = "0.1.16"
 futures = "0.3.31"
 anyhow = "1.0.98"
-uuid = { version = "1.17.0", features = ["v4"] }
+uuid = { version = "1.18.1", features = ["v4"] }
 tokio-tungstenite = "0.27.0"
 serde_yaml_ng = "0.10.0"
 thiserror = "2.0.12"
