@@ -20,7 +20,7 @@ tauri-plugin-shell = "2.3.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 kube = { version = "1.1.0", features = ["runtime", "derive", "ws"] }
-kube-runtime = "1.1.0"
+kube-runtime = "2.0.1"
 k8s-openapi = { version = "0.25.0", features = ["latest"] }
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-util = { version = "0.7.16", features = ["io"] }
