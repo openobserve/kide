@@ -1,4 +1,9 @@
 version: 2
+registries:
+  crates-io-git:
+    type: cargo-registry
+    url: "https://github.com/rust-lang/crates.io-index"
+
 updates:
   # npm dependencies
   - package-ecosystem: "npm"
@@ -17,6 +22,8 @@ updates:
   # Cargo (Rust) dependencies
   - package-ecosystem: "cargo"
     directory: "/src-tauri"
+    registries:
+      - crates-io-git
     schedule:
       interval: "daily"
       time: "09:00"
