@@ -54,7 +54,7 @@ jobs:
           key: ${{ runner.os }}-cargo-audit-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: cargo install cargo-audit --locked || true
 
       - name: Audit Rust dependencies
         run: cd src-tauri && cargo audit
