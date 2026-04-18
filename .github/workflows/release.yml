@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'  # Trigger on version tags like v1.0.0
+    branches:
+      - main  # Trigger continuous release on main
   workflow_dispatch:
     inputs:
       version:
@@ -537,9 +539,20 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R artifacts
 
+      - name: Set dynamic tag
+        id: dynamic_tag
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "TAG_NAME=v0.0.0-nightly-$SHORT_SHA" >> $GITHUB_ENV
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG_NAME }}
           files: |
             artifacts/macos-dmg/*.dmg
             artifacts/macos-dmg/*.txt
