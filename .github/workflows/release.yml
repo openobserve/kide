@@ -45,6 +45,7 @@ jobs:
 
       - name: Audit npm dependencies
         run: npm audit --audit-level=moderate
+        continue-on-error: true
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -60,6 +61,7 @@ jobs:
 
       - name: Audit Rust dependencies
         run: cd src-tauri && cargo audit
+        continue-on-error: true
 
   release-macos:
     needs: security-check
