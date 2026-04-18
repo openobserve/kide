@@ -29,10 +29,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          monaco: [
-            'monaco-editor/esm/vs/editor/editor.api'
-          ]
+        manualChunks(id) {
+          if (id.includes('monaco-editor/esm/vs/editor/editor.api')) {
+            return 'monaco';
+          }
         }
       }
     }
