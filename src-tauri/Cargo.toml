@@ -18,7 +18,7 @@ tauri-build = { version = "2.3.1", features = [] }
 tauri = { version = "2.11.1", features = ["rustls-tls"] }
 tauri-plugin-shell = "2.3.2"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
+serde_json = "1.0.150"
 kube = { version = "1.1.0", features = ["runtime", "derive", "ws"] }
 kube-runtime = "3.1.0"
 k8s-openapi = { version = "0.25.0", features = ["latest"] }
