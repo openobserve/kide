@@ -32,7 +32,7 @@
     "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^25.9.1",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vue/test-utils": "^2.4.6",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.9.1",
     "jsdom": "^29.0.2",
     "tailwindcss": "^4.3.0",
