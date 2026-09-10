@@ -40,7 +40,7 @@ tempfile = "3.20.0"
 [dev-dependencies]
 tokio-test = "0.4.4"
 mockall = "0.15.0"
-rstest = "0.26.1"
+rstest = "0.27.0"
 
 [features]
 default = ["custom-protocol"]
