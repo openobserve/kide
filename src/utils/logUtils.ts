@@ -27,6 +27,12 @@ export interface SearchMatch {
   matchIndex: number
 }
 
+export interface HighlightSegment {
+  text: string
+  highlighted: boolean
+  current: boolean
+}
+
 export class LogSearchManager {
   private searchMatches: SearchMatch[] = []
   private currentMatchIndex = 0
@@ -90,22 +96,30 @@ export class LogSearchManager {
     this.currentMatchIndex = 0
   }
 
-  highlightSearchInText(text: string, lineIndex: number, searchQuery: string): string {
-    if (!searchQuery.trim()) return escapeHtml(text)
-    
-    const query = searchQuery
-    const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi')
+  highlightSegments(text: string, lineIndex: number, searchQuery: string): HighlightSegment[] {
+    if (!searchQuery.trim()) return [{ text, highlighted: false, current: false }]
+
+    const regex = new RegExp(`(${escapeRegExp(searchQuery)})`, 'gi')
     const currentMatch = this.getCurrentMatch()
-    
+    const segments: HighlightSegment[] = []
+
     let matchIndex = 0
-    return escapeHtml(text).replace(regex, (match) => {
-      const isCurrentMatch = currentMatch && 
-        currentMatch.lineIndex === lineIndex && 
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ text: text.slice(lastIndex, match.index), highlighted: false, current: false })
+      }
+      const isCurrentMatch = currentMatch !== null &&
+        currentMatch.lineIndex === lineIndex &&
         currentMatch.matchIndex === matchIndex
+      segments.push({ text: match[0], highlighted: true, current: isCurrentMatch })
       matchIndex++
-      return isCurrentMatch 
-        ? `<span class="bg-yellow-400 text-black font-bold">${match}</span>`
-        : `<span class="bg-yellow-600 text-black">${match}</span>`
-    })
+      lastIndex = match.index + match[0].length
+    }
+    if (lastIndex < text.length) {
+      segments.push({ text: text.slice(lastIndex), highlighted: false, current: false })
+    }
+    return segments
   }
 }

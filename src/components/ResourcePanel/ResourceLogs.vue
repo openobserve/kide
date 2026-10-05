@@ -101,8 +101,10 @@
         :class="{ 'bg-yellow-900/10': isMatchingLine(index) }"
       >
         <span v-if="extractTimestamp(line)" class="text-gray-400">{{ extractTimestamp(line) }}</span>
-        <span v-if="extractTimestamp(line)" v-html="highlightSearchInText(extractLogContent(line), index)"></span>
-        <span v-else v-html="highlightSearchInText(line, index)"></span>
+        <template v-for="(segment, segIndex) in highlightSearchInText(extractTimestamp(line) ? extractLogContent(line) : line, index)" :key="segIndex">
+          <span v-if="segment.highlighted" :class="segment.current ? 'bg-yellow-400 text-black font-bold' : 'bg-yellow-600 text-black'">{{ segment.text }}</span>
+          <template v-else>{{ segment.text }}</template>
+        </template>
       </div>
       <div v-if="logLines.length === 0" class="text-gray-500 italic">No logs available</div>
     </div>
@@ -174,8 +176,8 @@ function updateSearchMatches(): void {
   searchManager.updateSearchMatches(props.logLines, searchQuery.value)
 }
 
-function highlightSearchInText(text: string, lineIndex: number): string {
-  return searchManager.highlightSearchInText(text, lineIndex, searchQuery.value)
+function highlightSearchInText(text: string, lineIndex: number) {
+  return searchManager.highlightSegments(text, lineIndex, searchQuery.value)
 }
 
 function isMatchingLine(lineIndex: number): boolean {
