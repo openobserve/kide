@@ -15,7 +15,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^2.0.0",
+    "@kubernetes/client-node": "^2.0.1",
     "@tanstack/vue-table": "^9.2.8",
     "@tauri-apps/api": "^2.12.3",
     "@types/js-yaml": "^4.0.9",
