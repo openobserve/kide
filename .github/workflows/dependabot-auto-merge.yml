@@ -1,6 +1,9 @@
 name: Dependabot Auto-Merge
 
-on: pull_request_target
+# pull_request is enough: Dependabot branches live in this repository, and the permissions block below
+# gives the token what the job needs. pull_request_target is blocked by default in public repositories
+# from 2026-12-02.
+on: pull_request
 
 permissions:
   contents: write
